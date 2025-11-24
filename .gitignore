@@ -1,7 +1,10 @@
 # build output
 dist/
+public/processed/
 # generated types
 .astro/
+public/photos/
+public/processed/
 
 # dependencies
 node_modules/
@@ -22,6 +25,5 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
-public/photos/
-public/processed/
+pnpm-lock.yaml
 public/photos.json
