@@ -4,6 +4,8 @@ public/processed/
 public/photos/
 # generated types
 .astro/
+public/photos/
+public/processed/
 
 # dependencies
 node_modules/
