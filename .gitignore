@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+public/photos/
+public/processed/
+public/photos.json
