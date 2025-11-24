@@ -7,7 +7,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "process-images": "tsx scripts/build-images.ts",
+    "build:full": "npm run process-images && npm run build"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.12",
@@ -23,7 +25,8 @@
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
-    "@types/sharp": "^0.32.0"
+    "@types/sharp": "^0.32.0",
+    "tsx": "^4.20.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
