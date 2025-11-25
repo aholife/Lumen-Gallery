@@ -1,0 +1,167 @@
+---
+/**
+ * 带 Blurhash 占位符的图片组件
+ * 在图片加载前显示模糊的占位符
+ */
+import { Image } from 'astro:assets';
+
+interface Props {
+  src: string;
+  alt: string;
+  width: number;
+  height?: number;
+  blurhash: string;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+}
+
+const { src, alt, width, height, blurhash, class: className, loading = 'lazy' } = Astro.props;
+const aspectRatio = height ? `${width}/${height}` : `${width}/${width}`;
+---
+
+<div class={`blurhash-image ${className || ''}`} style={`aspect-ratio: ${aspectRatio}`}>
+  <canvas 
+    class="blurhash-canvas" 
+    data-blurhash={blurhash}
+    data-width={width}
+    data-height={height || width}
+  ></canvas>
+  <Image 
+    src={src}
+    alt={alt}
+    width={width}
+    height={height || width}
+    loading={loading}
+    class="actual-image"
+    format="webp"
+    quality={80}
+  />
+</div>
+
+<style>
+  .blurhash-image {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .blurhash-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .blurhash-canvas.fade-out {
+    opacity: 0;
+  }
+
+  .actual-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .actual-image :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .actual-image.loaded {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  import { decode } from 'blurhash';
+
+  // 在客户端初始化所有 blurhash 图片
+  function initBlurhashImages() {
+    const canvases = document.querySelectorAll('.blurhash-canvas');
+    
+    canvases.forEach((canvas) => {
+      if (!(canvas instanceof HTMLCanvasElement)) return;
+      
+      const blurhash = canvas.dataset.blurhash;
+      const width = parseInt(canvas.dataset.width || '32');
+      const height = parseInt(canvas.dataset.height || '32');
+      
+      if (!blurhash) return;
+      
+      try {
+        // 解码 blurhash (使用较小的尺寸以提高性能)
+        const pixels = decode(blurhash, 32, 32);
+        
+        // 将像素数据绘制到 canvas
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        canvas.width = 32;
+        canvas.height = 32;
+        
+        const imageData = ctx.createImageData(32, 32);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+        
+        // 【关键位置】监听实际图片的加载，这里控制何时显示图片
+        const container = canvas.parentElement;
+        if (!container) {
+          console.warn('⚠️ Container not found');
+          return;
+        }
+        
+        // 查找实际的 img 元素（Astro Image 组件会直接渲染 img 标签）
+        const img = container.querySelector('.actual-image');
+        
+        if (!img) {
+          console.warn('⚠️ Image element not found');
+          return;
+        }
+        
+        console.log('🔍 Found element:', img.tagName, img.className);
+        
+        // 处理图片加载的核心函数
+        const handleLoad = () => {
+          console.log('✅ Image loaded, showing actual image');
+          img.classList.add('loaded'); // 【这里设置 opacity: 1 显示图片】
+          canvas.classList.add('fade-out'); // 【这里淡出 blurhash】
+        };
+        
+        // 如果找到的就是 img 元素
+        if (img instanceof HTMLImageElement) {
+          console.log('🖼️ Direct img element found:', img.src);
+          
+          img.addEventListener('load', handleLoad);
+          
+          // 【关键判断】如果图片已经加载完成（从缓存），立即显示
+          if (img.complete && img.naturalHeight !== 0) {
+            console.log('⚡ Image already loaded from cache');
+            handleLoad();
+          }
+        } else {
+          console.error('❌ Element is not an HTMLImageElement:', img);
+        }
+      } catch (error) {
+        console.error('Failed to decode blurhash:', error);
+      }
+    });
+  }
+
+  // 页面加载后初始化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBlurhashImages);
+  } else {
+    initBlurhashImages();
+  }
+
+  // 支持 View Transitions（如果启用）
+  document.addEventListener('astro:after-swap', initBlurhashImages);
+</script>

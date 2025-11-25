@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/GalleryPost.astro';
+import BlurHashImage from '../components/BlurHashImage.astro';
 import '../styles/global.css';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -82,15 +83,16 @@ try {
       <div class="gallery-container">
 
         <div class="photo-grid">
-          {photos.map((photo) => (
-            <div class="photo-card">
+          {photos.map((photo, index) => (
+            <div class="photo-card" data-index={index}>
               <div class="photo-wrapper">
-                <img
+                <BlurHashImage
                   src={photo.thumbnails.medium.url}
                   alt={photo.filename}
                   width={photo.thumbnails.medium.width}
                   height={photo.thumbnails.medium.height}
-                  loading="lazy"
+                  blurhash={photo.blurhash}
+                  loading="eager"
                 />
               </div>
               
@@ -234,40 +236,63 @@ try {
     color: #64748b;
   }
 
+  /* 🎯 CSS Columns 瀑布流布局 */
   .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-    gap: 0.5rem;
+    /* 核心属性：使用 CSS 多列布局 */
+    column-count: 2;  /* 默认单列（移动端） */
+    column-gap: 0.5rem; /* 列之间的间距 */
+    
+    /* 可选：平滑列高度过渡 */
+    transition: column-count 0.3s ease;
+  }
+
+  /* 📱 响应式断点：根据屏幕宽度调整列数 */
+  @media (min-width: 640px) {
+    .photo-grid {
+      column-count: 4; /* 平板：2列 */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .photo-grid {
+      column-count: 6; /* 桌面：3列 */
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .photo-grid {
+      column-count: 8; /* 大屏：4列 */
+    }
   }
 
   .photo-card {
-    background: white;
-    /* border-radius: 12px; */
+    /* 🔑 关键属性：防止卡片被列拆分 */
+    break-inside: avoid; /* 避免在卡片内部分列 */
+    page-break-inside: avoid; /* 兼容旧浏览器 */
+    
+    /* 确保卡片作为块级元素渲染 */
+    display: inline-block;
+    width: 100%;
+    
+    
+    /* 视觉效果 */
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    /* 平滑过渡效果 */
     transition: transform 0.2s, box-shadow 0.2s;
   }
 
   .photo-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
   }
 
   .photo-wrapper {
     position: relative;
     width: 100%;
-    padding-bottom: 75%; /* 4:3 aspect ratio */
     overflow: hidden;
-    background: #f1f5f9;
-  }
-
-  .photo-wrapper img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 
   .photo-info {
@@ -312,14 +337,107 @@ try {
       padding: 2rem;
     }
 
-    .photo-grid {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
     .step {
       flex-direction: column;
       gap: 1rem;
     }
   }
+
+  /* 图片加载动画 */
+  .photo-wrapper img {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .photo-wrapper img.loaded {
+    opacity: 1;
+  }
 </style>
+
+<script>
+  /**
+   * 🎨 智能图片懒加载 + 淡入动画
+   * 
+   * 使用 Intersection Observer API 实现:
+   * 1. 可视区域内的图片立即加载
+   * 2. 可视区域外的图片延迟加载（节省带宽）
+   * 3. 配合淡入动画提升视觉体验
+   * 4. 提前加载（rootMargin）优化用户体验
+   */
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    const images = document.querySelectorAll<HTMLImageElement>('.photo-wrapper img');
+    
+    // 检查浏览器是否支持 Intersection Observer
+    if ('IntersectionObserver' in window) {
+      
+      /**
+       * 创建 Intersection Observer
+       * 
+       * @param rootMargin - 提前加载的距离
+       *   - '200px' 表示图片距离视口还有 200px 时就开始加载
+       *   - 这样用户滚动到时图片已经加载完成，体验更流畅
+       * 
+       * @param threshold - 触发回调的可见比例
+       *   - 0.01 表示元素只要有 1% 可见就触发
+       */
+      const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          // 当图片进入可视区域（或接近可视区域）
+          if (entry.isIntersecting) {
+            const img = entry.target as HTMLImageElement;
+            
+            // 如果图片已经加载完成（来自缓存）
+            if (img.complete) {
+              img.classList.add('loaded');
+            } else {
+              // 监听首次加载完成
+              img.addEventListener('load', () => {
+                img.classList.add('loaded');
+              }, { once: true }); // once: true 表示只触发一次
+              
+              // 监听加载失败
+              img.addEventListener('error', () => {
+                console.error('图片加载失败:', img.src);
+                img.classList.add('loaded'); // 即使失败也显示（会显示 Blurhash 占位符）
+              }, { once: true });
+            }
+            
+            // 停止观察这张图片（已经处理过了）
+            observer.unobserve(img);
+          }
+        });
+      }, {
+        // 提前 200px 开始加载，用户滚动时图片已经准备好
+        rootMargin: '200px 0px',
+        // 元素只要有 1% 可见就触发
+        threshold: 0.01
+      });
+      
+      // 开始观察所有图片
+      images.forEach(img => {
+        imageObserver.observe(img);
+      });
+      
+    } else {
+      // 降级方案：不支持 Intersection Observer 的旧浏览器
+      // 直接加载所有图片（保证功能可用）
+      console.warn('浏览器不支持 Intersection Observer，使用降级方案');
+      
+      images.forEach((img) => {
+        if (img.complete) {
+          img.classList.add('loaded');
+        } else {
+          img.addEventListener('load', () => {
+            img.classList.add('loaded');
+          });
+          
+          img.addEventListener('error', () => {
+            console.error('图片加载失败:', img.src);
+            img.classList.add('loaded');
+          });
+        }
+      });
+    }
+  });
+</script>
