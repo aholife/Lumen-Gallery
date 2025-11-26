@@ -77,7 +77,7 @@ export async function generateBlurhash(buffer: Buffer, components: number = 4): 
 /**
  * 转换 HEIC/HEIF/TIFF 格式到 JPEG
  */
-export async function convertImage(buffer: Buffer, targetFormat: "jpg" | "png" | "webp" = "jpg", quality: number = 90): Promise<Buffer> {
+export async function convertImage(buffer: Buffer, targetFormat: "jpg" | "png" | "webp" | "avif" = "jpg", quality: number = 90): Promise<Buffer> {
   const sharpInstance = sharp(buffer)
 
   switch (targetFormat) {
@@ -87,6 +87,8 @@ export async function convertImage(buffer: Buffer, targetFormat: "jpg" | "png" |
       return await sharpInstance.png({ quality }).toBuffer()
     case "webp":
       return await sharpInstance.webp({ quality }).toBuffer()
+    case "avif":
+      return await sharpInstance.avif({ quality }).toBuffer()
     default:
       throw new Error(`Unsupported format: ${targetFormat}`)
   }
