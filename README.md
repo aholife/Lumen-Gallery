@@ -165,11 +165,11 @@ pnpm build
 - [x] 基础画廊页面
 
 ### 🚧 第二阶段：交互增强（进行中）
-- [ ] 响应式瀑布流布局（Masonry / CSS Grid）
+- [x] 响应式瀑布流布局（Masonic / CSS Grid）
 - [ ] 全屏查看器（PhotoSwipe / Swiper.js）
 - [ ] 标签筛选和搜索功能
 - [ ] 懒加载优化
-- [ ] Blurhash 占位符展示
+- [x] Blurhash 占位符展示
 
 ### 🔮 第三阶段：高级功能（规划中）
 - [ ] 交互式地图浏览器（MapLibre GL JS）
