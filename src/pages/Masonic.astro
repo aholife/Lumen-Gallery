@@ -1,11 +1,11 @@
 ---
 import Layout from '../layouts/GalleryPost.astro';
-import BlurHashImage from '../components/BlurHashImage.astro';
+import MasonicGallery from '../components/MasonicGallery';
 import '../styles/global.css';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
-export const title = '照片画廊';
+export const title = '照片画廊 (Masonic)';
 export const description = '欢迎来到我的照片画廊';
 export const pubDate = new Date();
 
@@ -22,6 +22,15 @@ try {
   console.log(`✅ Loaded ${photos.length} photos`);
 } catch (error) {
   console.log('⚠️  Photos not processed yet. Run: pnpm process-images');
+}
+
+function formatBytes(bytes: number, decimals = 1) {
+  if (!+bytes) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))}${sizes[i]}`;
 }
 ---
 
@@ -81,57 +90,13 @@ try {
       </div>
     ) : (
       <div class="gallery-container">
-
-        <div class="photo-grid">
-          {photos.map((photo, index) => (
-            <div class="photo-card" data-index={index}>
-              <div class="photo-content">
-                <div class="photo-wrapper">
-                  <BlurHashImage
-                    src={photo.thumbnails.medium.url}
-                    alt={photo.filename}
-                    width={photo.thumbnails.medium.width}
-                    height={photo.thumbnails.medium.height}
-                    blurhash={photo.blurhash}
-                    loading="eager"
-                  />
-                </div>
-                
-                {/* <div class="photo-info">
-                  <h3 class="photo-title">{photo.filename}</h3>
-                  
-                  {photo.exif.dateTime && (
-                    <p class="photo-date">
-                      📅 {new Date(photo.exif.dateTime).toLocaleDateString('zh-CN')}
-                    </p>
-                  )}
-                  
-                  {(photo.exif.make || photo.exif.model) && (
-                    <p class="photo-camera">
-                      📷 {photo.exif.make} {photo.exif.model}
-                    </p>
-                  )}
-                  
-                  {photo.tags.length > 0 && (
-                    <div class="photo-tags">
-                      {photo.tags.map((tag: string) => (
-                        <span class="tag">#{tag}</span>
-                      ))}
-                    </div>
-                  )}
-                </div> */}
-              </div>
-            </div>
-          ))}
-        </div>
+        <MasonicGallery client:only="react" photos={photos} />
       </div>
     )}
   </article>
 </Layout>
 
 <style>
-
-
   /* 欢迎页面样式 */
   .welcome-section {
     display: flex;
@@ -247,13 +212,13 @@ try {
   /* 📱 响应式断点：根据屏幕宽度调整列数 */
   .photo-card {
     width: 50%; /* 2列 */
-    padding: 0 10px;
-    margin-bottom: 20px;
+    padding: 0 5px;
+    margin-bottom: 10px;
   }
 
   .photo-content {
+    position: relative;
     background: white;
-    border-radius: 8px;
     
     /* 视觉效果 */
     overflow: hidden;
@@ -298,40 +263,54 @@ try {
   }
 
   .photo-info {
-    padding: 1.5rem;
-  }
-
-  .photo-title {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.125rem;
-    color: #1e293b;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .photo-date,
-  .photo-camera {
-    margin: 0.5rem 0;
-    font-size: 0.875rem;
-    color: #64748b;
-  }
-
-  .photo-tags {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%);
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  .photo-content:hover .photo-info {
+    opacity: 1;
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+  }
+
+  .tags {
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1rem;
   }
 
   .tag {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background: #e0e7ff;
-    color: #3730a3;
-    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 4px;
     font-size: 0.75rem;
-    font-weight: 500;
+    backdrop-filter: blur(4px);
+  }
+
+  .details {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+    gap: 0.5rem;
+    font-family: monospace; /* Optional: makes numbers align better */
+  }
+
+  .separator {
+    opacity: 0.6;
   }
 
   @media (max-width: 768px) {
@@ -355,103 +334,3 @@ try {
     opacity: 1;
   }
 </style>
-
-<script>
-  import Masonry from 'masonry-layout';
-  import imagesLoaded from 'imagesloaded';
-
-  /**
-   * 🎨 智能图片懒加载 + 淡入动画 + Masonry 布局
-   */
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    // 1. 初始化 Masonry
-    const grid = document.querySelector('.photo-grid');
-    if (grid) {
-      const msnry = new Masonry(grid, {
-        itemSelector: '.photo-card',
-        percentPosition: true
-      });
-
-      // 确保图片加载后重新布局
-      imagesLoaded(grid).on('progress', function() {
-        msnry.layout();
-      });
-    }
-
-    // 2. 图片懒加载逻辑
-    const images = document.querySelectorAll<HTMLImageElement>('.photo-wrapper img');
-    
-    // 检查浏览器是否支持 Intersection Observer
-    if ('IntersectionObserver' in window) {
-      
-      /**
-       * 创建 Intersection Observer
-       * 
-       * @param rootMargin - 提前加载的距离
-       *   - '200px' 表示图片距离视口还有 200px 时就开始加载
-       *   - 这样用户滚动到时图片已经加载完成，体验更流畅
-       * 
-       * @param threshold - 触发回调的可见比例
-       *   - 0.01 表示元素只要有 1% 可见就触发
-       */
-      const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-          // 当图片进入可视区域（或接近可视区域）
-          if (entry.isIntersecting) {
-            const img = entry.target as HTMLImageElement;
-            
-            // 如果图片已经加载完成（来自缓存）
-            if (img.complete) {
-              img.classList.add('loaded');
-            } else {
-              // 监听首次加载完成
-              img.addEventListener('load', () => {
-                img.classList.add('loaded');
-              }, { once: true }); // once: true 表示只触发一次
-              
-              // 监听加载失败
-              img.addEventListener('error', () => {
-                console.error('图片加载失败:', img.src);
-                img.classList.add('loaded'); // 即使失败也显示（会显示 Blurhash 占位符）
-              }, { once: true });
-            }
-            
-            // 停止观察这张图片（已经处理过了）
-            observer.unobserve(img);
-          }
-        });
-      }, {
-        // 提前 200px 开始加载，用户滚动时图片已经准备好
-        rootMargin: '200px 0px',
-        // 元素只要有 1% 可见就触发
-        threshold: 0.01
-      });
-      
-      // 开始观察所有图片
-      images.forEach(img => {
-        imageObserver.observe(img);
-      });
-      
-    } else {
-      // 降级方案：不支持 Intersection Observer 的旧浏览器
-      // 直接加载所有图片（保证功能可用）
-      console.warn('浏览器不支持 Intersection Observer，使用降级方案');
-      
-      images.forEach((img) => {
-        if (img.complete) {
-          img.classList.add('loaded');
-        } else {
-          img.addEventListener('load', () => {
-            img.classList.add('loaded');
-          });
-          
-          img.addEventListener('error', () => {
-            console.error('图片加载失败:', img.src);
-            img.classList.add('loaded');
-          });
-        }
-      });
-    }
-  });
-</script>
