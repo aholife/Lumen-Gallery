@@ -51,8 +51,9 @@ export interface ImageMetadata {
   thumbnails: {
     small: ThumbnailInfo // 300px
     medium: ThumbnailInfo // 800px
-    large: ThumbnailInfo // 1600px
+    large: ThumbnailInfo // 1600px 
   }
+  Original?: ThumbnailInfo // 原图信息
 
   // 标签（从目录结构提取）
   tags: string[]

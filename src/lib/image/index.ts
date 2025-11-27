@@ -2,7 +2,7 @@ import { writeFile, mkdir } from "fs/promises"
 import { join, dirname, basename, extname } from "path"
 import type { StorageProvider } from "../storage/types"
 import type { ImageMetadata, ProcessImageOptions } from "./types"
-import { generateThumbnails, generateBlurhash, convertImage, detectImageFormat, getImageDimensions } from "./processor"
+import { generateThumbnails, generateThumbnail, generateBlurhash, convertImage, detectImageFormat, getImageDimensions } from "./processor"
 import { extractExif } from "./exif"
 
 /**
@@ -47,6 +47,17 @@ export async function processImage(storage: StorageProvider, fileKey: string, ou
     quality: options.quality || 85,
   })
 
+  // 生成原图大小的处理后图片（仅在需要转换格式时）
+  let fullImage: { buffer: Buffer; info: import("./types").ThumbnailInfo } | null = null
+  
+  if (needsConversion) {
+    const fullSize = Math.max(dimensions.width, dimensions.height)
+    fullImage = await generateThumbnail(processBuffer, fullSize, {
+      format: options.outputFormat || "jpg",
+      quality: options.quality || 85,
+    })
+  }
+
   // 8. 保存文件
   const filename = basename(fileKey, extname(fileKey))
   const fileDir = dirname(fileKey)
@@ -83,6 +94,37 @@ export async function processImage(storage: StorageProvider, fileKey: string, ou
     }
   }
 
+  // 保存原图大小图片
+
+  let OriginalImage: import("./types").ThumbnailInfo = { url: "", width: 0, height: 0, size: 0 }
+  if (fullImage) {
+    const ext = options.outputFormat || "jpg"
+    const fullFilename = `${filename}_full.${ext}`
+    const fullPath = join(outputPath, fullFilename)
+
+    await writeFile(fullPath, new Uint8Array(fullImage.buffer))
+
+    const relativePath = join(fileDir, fullFilename).replace(/\\/g, "/")
+    OriginalImage = {
+      ...fullImage.info,
+      url: `/processed/${relativePath}`,
+    }
+
+    console.log(`  Saved: ${fullFilename} (${fullImage.info.size} bytes)`)
+  } else {
+    // 不需要转换，直接使用原图
+    if (storage.getPublicUrl) {
+      const originalUrl = storage.getPublicUrl(fileKey)
+      OriginalImage = {
+        url: originalUrl,
+        width: dimensions.width,
+        height: dimensions.height,
+        size: originalBuffer.length,
+      }
+      console.log(`  Using original: ${fileKey}`)
+    }
+  }
+
   // 9. 提取标签（从目录路径）
   const tags = extractTagsFromPath(fileKey)
 
@@ -102,6 +144,7 @@ export async function processImage(storage: StorageProvider, fileKey: string, ou
       medium: thumbnailInfo.medium,
       large: thumbnailInfo.large,
     },
+    Original: OriginalImage,
     tags,
   }
 
