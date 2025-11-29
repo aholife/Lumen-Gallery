@@ -1,0 +1,257 @@
+---
+import { Image } from "astro:assets";
+import aboutImg from "../assets/blog-placeholder-about.jpg";
+import { AUTHOR_INFO } from "../consts";
+import photos from "../../public/photos.json";
+
+// 计算照片总数
+const totalPhotos = photos.length;
+
+// 计算最后更新时间 (取照片中最近的修改时间)
+const lastUpdate =
+    photos.length > 0
+        ? new Date(
+              Math.max(
+                  ...photos.map((p) => new Date(p.lastModified).getTime()),
+              ),
+          ).toLocaleDateString("zh-CN")
+        : new Date().toLocaleDateString("zh-CN");
+---
+
+<aside class="author-card">
+    <div class="profile-header">
+        <div class="avatar-container">
+            <Image
+                src={aboutImg}
+                alt={AUTHOR_INFO.name}
+                width={120}
+                height={120}
+                class="avatar-image"
+                format="webp"
+                quality={90}
+            />
+        </div>
+
+        <h2 class="author-name">{AUTHOR_INFO.name}</h2>
+    </div>
+
+    <div class="info-group">
+        <h3 class="group-title">社交媒体</h3>
+        <div class="social-icons">
+            <a
+                href={AUTHOR_INFO.social.github}
+                target="_blank"
+                class="social-icon"
+                aria-label="Github"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    ><path
+                        d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                    ></path></svg
+                >
+            </a>
+            <a
+                href={AUTHOR_INFO.social.twitter}
+                target="_blank"
+                class="social-icon"
+                aria-label="X (Twitter)"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    ><path
+                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                    ></path></svg
+                >
+            </a>
+            {
+                AUTHOR_INFO.social.telegram && (
+                    <a
+                        href={AUTHOR_INFO.social.telegram}
+                        target="_blank"
+                        class="social-icon"
+                        aria-label="Telegram"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                        >
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                        </svg>
+                    </a>
+                )
+            }
+        </div>
+    </div>
+
+    <div class="info-group">
+        <h3 class="group-title">联系方式</h3>
+        <div class="info-list">
+            <div class="info-item">
+                <span class="label">邮箱</span>
+                <a
+                    href={`mailto:${AUTHOR_INFO.social.email}`}
+                    class="value link">{AUTHOR_INFO.social.email}</a
+                >
+            </div>
+            {
+                AUTHOR_INFO.social.wechat && (
+                    <div class="info-item">
+                        <span class="label">微信</span>
+                        <span class="value">{AUTHOR_INFO.social.wechat}</span>
+                    </div>
+                )
+            }
+        </div>
+    </div>
+
+    <div class="info-group meta-group">
+        <div class="meta-item">
+            <span class="meta-label">最后更新</span>
+            <span class="meta-value">{lastUpdate}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">照片总数</span>
+            <span class="meta-value">{totalPhotos}</span>
+        </div>
+    </div>
+</aside>
+
+<style>
+    .author-card {
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+        padding: 1.5rem;
+        color: #191919;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            Helvetica, Arial, sans-serif;
+    }
+
+    .profile-header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .avatar-container {
+        margin-bottom: 1rem;
+    }
+
+    .avatar-image {
+        border-radius: 50%;
+        object-fit: cover;
+        width: 100px;
+        height: 100px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .author-name {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }
+
+    .info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .group-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #959595;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .social-icons {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .social-icon {
+        color: #191919;
+        transition:
+            color 0.2s,
+            transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .social-icon:hover {
+        color: #0057ff;
+        transform: translateY(-2px);
+    }
+
+    .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .label {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .value {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #191919;
+    }
+
+    .value.link {
+        text-decoration: none;
+    }
+    .value.link:hover {
+        text-decoration: underline;
+    }
+
+    .meta-group {
+        margin-top: 1rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #eee;
+        gap: 1rem;
+    }
+
+    .meta-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+
+    .meta-label {
+        color: #666;
+    }
+
+    .meta-value {
+        font-weight: 700;
+        color: #191919;
+    }
+</style>
