@@ -30,6 +30,7 @@ export interface ImageExifData {
 }
 
 export interface ImageMetadata {
+  id: string // 唯一标识符 (通常等于 key)
   // 文件信息
   key: string // 原始文件路径
   filename: string // 文件名

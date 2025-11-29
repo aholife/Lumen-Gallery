@@ -1,5 +1,6 @@
 import { writeFile, mkdir } from "fs/promises"
 import { join, dirname, basename, extname } from "path"
+import { createHash } from "crypto"
 import type { StorageProvider } from "../storage/types"
 import type { ImageMetadata, ProcessImageOptions } from "./types"
 import { generateThumbnails, generateThumbnail, generateBlurhash, convertImage, detectImageFormat, getImageDimensions } from "./processor"
@@ -128,8 +129,12 @@ export async function processImage(storage: StorageProvider, fileKey: string, ou
   // 9. 提取标签（从目录路径）
   const tags = extractTagsFromPath(fileKey)
 
+  // 生成唯一 ID (MD5 Hash)
+  const id = createHash('md5').update(fileKey).digest('hex');
+
   // 10. 构建元数据
   const metadata: ImageMetadata = {
+    id,
     key: fileKey,
     filename: basename(fileKey),
     size: originalBuffer.length,
