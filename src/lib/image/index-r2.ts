@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from "fs/promises"
-import { join, dirname, basename, extname } from "path"
+import { dirname, basename, extname } from "path"
 import { createHash } from "crypto"
 import type { StorageProvider } from "../storage/types"
 import type { ImageMetadata, ProcessImageOptions } from "./types"
@@ -7,15 +7,28 @@ import { generateThumbnail, generateThumbHash, convertImage, detectImageFormat, 
 import { extractExif } from "./exif"
 
 /**
- * 处理单张图片（本地模式）
+ * R2 专用图片处理 - 缩略图上传到 R2，本地不保存图片
+ * 
+ * R2 存储结构:
+ * your-bucket/
+ * ├── photos/           # 原图（用户上传）
+ * │   └── cat/
+ * │       └── photo.jpg
+ * └── thumbnails/       # 缩略图（构建时生成上传）
+ *     └── cat/
+ *         └── photo_thumb.jpg
  */
-export async function processImage(
+export async function processImageR2(
   storage: StorageProvider, 
   fileKey: string, 
-  outputDir: string, 
   options: ProcessImageOptions = {}
 ): Promise<ImageMetadata> {
   console.log(`Processing: ${fileKey}`)
+
+  // 检查存储是否支持上传
+  if (!storage.uploadFile || !storage.getPublicUrl) {
+    throw new Error('R2 storage must support uploadFile and getPublicUrl')
+  }
 
   // 1. 下载原图
   const originalBuffer = await storage.downloadFile(fileKey)
@@ -55,39 +68,34 @@ export async function processImage(
     quality: options.quality || 85,
   })
 
-  // 8. 保存缩略图到本地
+  // 8. 上传缩略图到 R2
   const filename = basename(fileKey, extname(fileKey))
   const fileDir = dirname(fileKey)
-  const outputPath = join(outputDir, fileDir)
-
-  await mkdir(outputPath, { recursive: true })
-
-  const thumbFilename = `${filename}_thumb.${ext}`
-  const thumbPath = join(outputPath, thumbFilename)
-  await writeFile(thumbPath, new Uint8Array(thumbnail.buffer))
   
-  const relativePath = join(fileDir, thumbFilename).replace(/\\/g, "/")
-  const thumbnailUrl = `/processed/${relativePath}`
-  console.log(`  Saved: ${thumbFilename} (${thumbnail.info.size} bytes)`)
+  const thumbFilename = `${filename}_thumb.${ext}`
+  const r2Key = `thumbnails/${fileDir}/${thumbFilename}`.replace(/\/+/g, '/')
+  
+  await storage.uploadFile(r2Key, thumbnail.buffer, `image/${ext === 'jpg' ? 'jpeg' : ext}`)
+  const thumbnailUrl = storage.getPublicUrl(r2Key)
+  console.log(`  ☁️ Uploaded: ${r2Key}`)
 
   // 9. 处理原图 URL
-  let originalUrl: string
+  let originalImageUrl: string
   let originalSize = originalBuffer.length
-
+  
   if (needsConversion) {
-    // 保存转换后的原图
+    // 如果需要格式转换，上传转换后的图片
     const fullFilename = `${filename}.${ext}`
-    const fullPath = join(outputPath, fullFilename)
-    await writeFile(fullPath, new Uint8Array(processBuffer))
+    const r2FullKey = `photos/${fileDir}/${fullFilename}`.replace(/\/+/g, '/')
     
-    const fullRelativePath = join(fileDir, fullFilename).replace(/\\/g, "/")
-    originalUrl = `/processed/${fullRelativePath}`
+    await storage.uploadFile(r2FullKey, processBuffer, `image/${ext === 'jpg' ? 'jpeg' : ext}`)
+    originalImageUrl = storage.getPublicUrl(r2FullKey)
     originalSize = processBuffer.length
-    console.log(`  Saved converted: ${fullFilename}`)
+    console.log(`  ☁️ Uploaded converted: ${r2FullKey}`)
   } else {
-    // 使用原图路径
-    originalUrl = storage.getPublicUrl ? storage.getPublicUrl(fileKey) : `/photos/${fileKey}`
-    console.log(`  Using original: ${originalUrl}`)
+    // 直接使用原图 URL
+    originalImageUrl = storage.getPublicUrl(fileKey)
+    console.log(`  Using original: ${originalImageUrl}`)
   }
 
   // 10. 提取标签
@@ -115,7 +123,7 @@ export async function processImage(
       size: thumbnail.info.size,
     },
     original: {
-      url: originalUrl,
+      url: originalImageUrl,
       width: dimensions.width,
       height: dimensions.height,
       size: originalSize,
@@ -128,14 +136,14 @@ export async function processImage(
 }
 
 /**
- * 批量处理图片（本地模式）
+ * 批量处理图片（R2 模式）
  */
-export async function processImages(
+export async function processImagesR2(
   storage: StorageProvider, 
-  outputDir: string, 
   options: ProcessImageOptions = {}
 ): Promise<ImageMetadata[]> {
-  console.log("🖼️  Starting image processing...\n")
+  console.log("🖼️  Starting R2 image processing...\n")
+  console.log("📡 Mode: Upload thumbnail to R2, no local storage\n")
 
   const files = await storage.listFiles()
   console.log(`Found ${files.length} images\n`)
@@ -144,7 +152,7 @@ export async function processImages(
 
   for (const file of files) {
     try {
-      const metadata = await processImage(storage, file.key, outputDir, options)
+      const metadata = await processImageR2(storage, file.key, options)
       results.push(metadata)
     } catch (error) {
       console.error(`✗ Failed to process ${file.key}:`, error)
@@ -166,9 +174,9 @@ function extractTagsFromPath(filePath: string): string[] {
 }
 
 /**
- * 保存元数据到 JSON 文件
+ * 保存元数据到 JSON 文件（本地）
  */
-export async function saveMetadata(metadata: ImageMetadata[], outputPath: string): Promise<void> {
+export async function saveMetadataR2(metadata: ImageMetadata[], outputPath: string): Promise<void> {
   await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, JSON.stringify(metadata, null, 2), "utf-8")
   console.log(`\n💾 Metadata saved to: ${outputPath}`)

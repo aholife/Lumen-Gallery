@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 import { Masonry } from 'masonic';
-import { decode } from 'blurhash';
+import { thumbHashToRGBA } from 'thumbhash';
 
 // ========== 类型定义 ==========
 interface Photo {
@@ -11,11 +11,9 @@ interface Photo {
   height: number;
   size: number;
   format?: string;
-  blurhash: string;
+  thumbHash: string;
   tags?: string[];
-  thumbnails: {
-    medium: { url: string; width: number; height: number };
-  };
+  thumbnail: { url: string; width: number; height: number };
 }
 
 export interface MasonryGalleryRef {
@@ -29,34 +27,38 @@ interface MasonicGalleryProps {
   onPhotoClick?: (photo: Photo) => void;
 }
 
-// ========== BlurHash 图片组件 ==========
-const BlurHashImage: React.FC<{
+// ========== ThumbHash 图片组件 ==========
+const ThumbHashImage: React.FC<{
   src: string;
   alt: string;
   width: number;
   height: number;
-  blurhash: string;
+  thumbHash: string;
   transitionName?: string;
-}> = ({ src, alt, width, height, blurhash, transitionName }) => {
+}> = ({ src, alt, width, height, thumbHash, transitionName }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !blurhash) return;
-    
+    if (!canvas || !thumbHash) return;
+
     try {
-      const pixels = decode(blurhash, 32, 32);
+      // 将 Base64 字符串解码为 Uint8Array
+      const hash = Uint8Array.from(atob(thumbHash), c => c.charCodeAt(0));
+      const { w, h, rgba } = thumbHashToRGBA(hash);
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        const imageData = ctx.createImageData(32, 32);
-        imageData.data.set(pixels);
+        canvas.width = w;
+        canvas.height = h;
+        const imageData = ctx.createImageData(w, h);
+        imageData.data.set(rgba);
         ctx.putImageData(imageData, 0, 0);
       }
     } catch (e) {
-      console.error('BlurHash decode error:', e);
+      console.error('ThumbHash decode error:', e);
     }
-  }, [blurhash]);
+  }, [thumbHash]);
 
   return (
     <div className="relative w-full overflow-hidden" style={{ aspectRatio: `${width}/${height}` }}>
@@ -64,10 +66,8 @@ const BlurHashImage: React.FC<{
         ref={canvasRef}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 
           ${status === 'loaded' ? 'opacity-0' : 'opacity-100'}`}
-        width={32}
-        height={32}
       />
-      
+
       {status !== 'error' && (
         <img
           src={src}
@@ -81,7 +81,7 @@ const BlurHashImage: React.FC<{
           style={transitionName ? { viewTransitionName: transitionName } as any : undefined}
         />
       )}
-      
+
       {status === 'error' && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 text-gray-500">
           <span>加载失败</span>
@@ -106,15 +106,15 @@ const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
   return (
     <div className="w-full">
       <a href={`/Gallery/${photo.key}`} className="block relative bg-white overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group rounded-lg">
-        <BlurHashImage
-          src={photo.thumbnails.medium.url}
+        <ThumbHashImage
+          src={photo.thumbnail.url}
           alt={photo.filename}
-          width={photo.thumbnails.medium.width}
-          height={photo.thumbnails.medium.height}
-          blurhash={photo.blurhash}
+          width={photo.thumbnail.width}
+          height={photo.thumbnail.height}
+          thumbHash={photo.thumbHash}
           transitionName={transitionName}
         />
-        
+
         <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="flex flex-wrap gap-2 mb-2">
             {(photo.tags?.length ? photo.tags : ['无标签']).map((tag) => (
@@ -123,7 +123,7 @@ const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
               </span>
             ))}
           </div>
-          
+
           <div className="flex items-center text-xs text-white/90 gap-2 font-mono">
             <span>{photo.format?.toUpperCase() || 'UNK'}</span>
             <span className="opacity-60">·</span>
@@ -168,8 +168,8 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
       return (
         <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {photos.slice(0, 8).map((photo) => (
-            <div 
-              key={photo.id} 
+            <div
+              key={photo.id}
               className="bg-gray-200 rounded-lg animate-pulse"
               style={{ aspectRatio: `${photo.width}/${photo.height}` }}
             />
