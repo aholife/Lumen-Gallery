@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, memo, useCallback } from 'react';
 import { Masonry } from 'masonic';
-import { decode } from 'blurhash';
-import PhotoViewer from './PhotoViewer';
+import { thumbHashToRGBA } from 'thumbhash';
 
 // ========== 类型定义 ==========
 interface Photo {
@@ -12,24 +11,9 @@ interface Photo {
   height: number;
   size: number;
   format?: string;
-  blurhash: string;
+  thumbHash: string;
   tags?: string[];
-  Original?: { url: string };
-  thumbnails: {
-    small?: { url: string; width: number; height: number };
-    medium: { url: string; width: number; height: number };
-    large?: { url: string; width: number; height: number };
-  };
-  exif?: {
-    Make?: string;
-    Model?: string;
-    LensModel?: string;
-    FocalLength?: number;
-    FNumber?: number;
-    ExposureTime?: number;
-    ISO?: number;
-    DateTimeOriginal?: string;
-  };
+  thumbnail: { url: string; width: number; height: number };
 }
 
 export interface MasonryGalleryRef {
@@ -43,33 +27,38 @@ interface MasonicGalleryProps {
   onPhotoClick?: (photo: Photo) => void;
 }
 
-// ========== BlurHash 图片组件 ==========
-const BlurHashImage: React.FC<{
+// ========== ThumbHash 图片组件 ==========
+const ThumbHashImage: React.FC<{
   src: string;
   alt: string;
   width: number;
   height: number;
-  blurhash: string;
-}> = ({ src, alt, width, height, blurhash }) => {
+  thumbHash: string;
+  transitionName?: string;
+}> = ({ src, alt, width, height, thumbHash, transitionName }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !blurhash) return;
+    if (!canvas || !thumbHash) return;
 
     try {
-      const pixels = decode(blurhash, 32, 32);
+      // 将 Base64 字符串解码为 Uint8Array
+      const hash = Uint8Array.from(atob(thumbHash), c => c.charCodeAt(0));
+      const { w, h, rgba } = thumbHashToRGBA(hash);
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        const imageData = ctx.createImageData(32, 32);
-        imageData.data.set(pixels);
+        canvas.width = w;
+        canvas.height = h;
+        const imageData = ctx.createImageData(w, h);
+        imageData.data.set(rgba);
         ctx.putImageData(imageData, 0, 0);
       }
     } catch (e) {
-      console.error('BlurHash decode error:', e);
+      console.error('ThumbHash decode error:', e);
     }
-  }, [blurhash]);
+  }, [thumbHash]);
 
   return (
     <div className="relative w-full overflow-hidden" style={{ aspectRatio: `${width}/${height}` }}>
@@ -77,8 +66,6 @@ const BlurHashImage: React.FC<{
         ref={canvasRef}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 
           ${status === 'loaded' ? 'opacity-0' : 'opacity-100'}`}
-        width={32}
-        height={32}
       />
 
       {status !== 'error' && (
@@ -126,16 +113,14 @@ const PhotoCard = memo(({ data: photo, index, onOpen }: PhotoCardProps) => {
 
   return (
     <div className="w-full">
-      <div
-        onClick={handleClick}
-        className="block relative bg-white overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group rounded-lg"
-      >
-        <BlurHashImage
-          src={photo.thumbnails.medium.url}
+      <a href={`/Gallery/${photo.key}`} className="block relative bg-white overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group rounded-lg">
+        <ThumbHashImage
+          src={photo.thumbnail.url}
           alt={photo.filename}
-          width={photo.thumbnails.medium.width}
-          height={photo.thumbnails.medium.height}
-          blurhash={photo.blurhash}
+          width={photo.thumbnail.width}
+          height={photo.thumbnail.height}
+          thumbHash={photo.thumbHash}
+          transitionName={transitionName}
         />
 
         <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -155,8 +140,8 @@ const PhotoCard = memo(({ data: photo, index, onOpen }: PhotoCardProps) => {
             <span>{formatBytes(photo.size)}</span>
           </div>
         </div>
-      </div>
     </div>
+    </div >
   );
 });
 

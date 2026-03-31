@@ -45,16 +45,14 @@ export interface ImageMetadata {
   // EXIF 数据
   exif: ImageExifData
 
-  // Blurhash 占位符
-  blurhash: string
+  // ThumbHash 占位符（比 BlurHash 更小更好）
+  thumbHash: string
 
-  // 生成的缩略图
-  thumbnails: {
-    small: ThumbnailInfo // 300px
-    medium: ThumbnailInfo // 800px
-    large: ThumbnailInfo // 1600px 
-  }
-  Original?: ThumbnailInfo // 原图信息
+  // 缩略图（单张）
+  thumbnail: ThumbnailInfo
+  
+  // 原图信息
+  original: ThumbnailInfo
 
   // 标签（从目录结构提取）
   tags: string[]
@@ -68,14 +66,10 @@ export interface ThumbnailInfo {
 }
 
 export interface ProcessImageOptions {
-  // 缩略图尺寸
-  thumbnailSizes?: number[]
-  // Blurhash 组件数量 (4-9)
-  blurhashComponents?: number
+  // 缩略图尺寸（单个值）
+  thumbnailSize?: number
   // 输出格式
   outputFormat?: "jpg" | "webp"
   // 输出质量 (1-100)
   quality?: number
-  // 是否保留原图
-  keepOriginal?: boolean
 }

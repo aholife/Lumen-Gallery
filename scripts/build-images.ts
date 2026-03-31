@@ -19,9 +19,8 @@ async function main() {
     // 2. 处理图片
     const outputDir = join(process.cwd(), 'public', 'processed');
     const metadata = await processImages(storage, outputDir, {
-      thumbnailSizes: [300, 800, 1600],
-      blurhashComponents: 4,
-      outputFormat: 'jpg',
+      thumbnailSize: 800,
+      outputFormat: 'webp',
       quality: 85,
     });
 

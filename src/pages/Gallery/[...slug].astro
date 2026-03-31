@@ -1,69 +1,71 @@
 ---
-import BaseHead from '../../components/BaseHead.astro';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+import BaseHead from "../../components/BaseHead.astro"
+import { readFile } from "fs/promises"
+import { join } from "path"
 
 export async function getStaticPaths() {
-  const photosPath = join(process.cwd(), 'public', 'photos.json');
-  try {
-    const data = await readFile(photosPath, 'utf-8');
-    const photos = JSON.parse(data);
-    
-    return photos.map((photo, index) => ({
-      params: { slug: photo.key },
-      props: { 
-        photo,
-        allPhotos: photos,
-        currentIndex: index,
-        prevPhoto: index > 0 ? photos[index - 1] : null,
-        nextPhoto: index < photos.length - 1 ? photos[index + 1] : null,
-      },
-    }));
-  } catch (e) {
-    console.error("Error loading photos.json", e);
-    return [];
-  }
+    const photosPath = join(process.cwd(), "public", "photos.json")
+    try {
+        const data = await readFile(photosPath, "utf-8")
+        const photos = JSON.parse(data)
+
+        return photos.map((photo, index) => ({
+            params: { slug: photo.key },
+            props: {
+                photo,
+                allPhotos: photos,
+                currentIndex: index,
+                prevPhoto: index > 0 ? photos[index - 1] : null,
+                nextPhoto: index < photos.length - 1 ? photos[index + 1] : null,
+            },
+        }))
+    } catch (e) {
+        console.error("Error loading photos.json", e)
+        return []
+    }
 }
 
-const { photo, allPhotos, currentIndex, prevPhoto, nextPhoto } = Astro.props as { 
-  photo: any;
-  allPhotos: any[];
-  currentIndex: number;
-  prevPhoto: any;
-  nextPhoto: any;
-};
-const { exif, filename, width, height, size, format, lastModified, tags, thumbnails, Original, id } = photo || {};
+const { photo, allPhotos, currentIndex, prevPhoto, nextPhoto } = Astro.props as {
+    photo: any
+    allPhotos: any[]
+    currentIndex: number
+    prevPhoto: any
+    nextPhoto: any
+}
+const { exif, filename, width, height, size, format, lastModified, tags, thumbnail, original, id } = photo || {}
 
 // Helper to format bytes
 function formatBytes(bytes, decimals = 2) {
-  if (!+bytes) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+    if (!+bytes) return "0 Bytes"
+    const k = 1024
+    const dm = decimals < 0 ? 0 : decimals
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
 }
 
 // Helper to format date
 function formatDate(dateString) {
-  try {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch (e) {
-    return dateString;
-  }
+    try {
+        return new Date(dateString).toLocaleString("zh-CN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        })
+    } catch (e) {
+        return dateString
+    }
 }
+
+const transitionName = `photo-${photo.id}`
 ---
 
 <!doctype html>
 <html lang="zh-cn">
-	<head>
-		<BaseHead title={filename} description={`Photo: ${filename}`} />
+    <head>
+        <BaseHead title={filename} description={`Photo: ${filename}`} />
         <style>
             * {
                 box-sizing: border-box;
@@ -122,7 +124,7 @@ function formatDate(dateString) {
                 max-width: 100%;
                 max-height: 100%;
                 object-fit: contain;
-                box-shadow: 0 0 20px rgba(0,0,0,0.5);
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
                 transition: transform 0.1s ease-out;
                 transform-origin: center center;
                 user-select: none;
@@ -185,7 +187,7 @@ function formatDate(dateString) {
             .tag:hover {
                 background: #e0e0e0;
             }
-            
+
             /* 顶部工具栏 */
             .toolbar {
                 position: absolute;
@@ -197,15 +199,16 @@ function formatDate(dateString) {
                 align-items: center;
                 padding: 16px 20px;
                 z-index: 20;
-                background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+                background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
             }
-            .toolbar-left, .toolbar-right {
+            .toolbar-left,
+            .toolbar-right {
                 display: flex;
                 gap: 8px;
                 align-items: center;
             }
             .toolbar-btn {
-                background: rgba(255,255,255,0.1);
+                background: rgba(255, 255, 255, 0.1);
                 color: white;
                 width: 40px;
                 height: 40px;
@@ -216,28 +219,28 @@ function formatDate(dateString) {
                 text-decoration: none;
                 backdrop-filter: blur(10px);
                 transition: background 0.2s;
-                border: 1px solid rgba(255,255,255,0.2);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 cursor: pointer;
             }
             .toolbar-btn:hover {
-                background: rgba(255,255,255,0.2);
+                background: rgba(255, 255, 255, 0.2);
             }
             .zoom-indicator {
                 color: white;
                 font-size: 12px;
-                background: rgba(0,0,0,0.5);
+                background: rgba(0, 0, 0, 0.5);
                 padding: 4px 12px;
                 border-radius: 12px;
                 backdrop-filter: blur(10px);
             }
-            
+
             /* 导航按钮 */
             .nav-btn {
                 position: absolute;
                 top: 50%;
                 transform: translateY(-50%);
                 z-index: 15;
-                background: rgba(255,255,255,0.1);
+                background: rgba(255, 255, 255, 0.1);
                 color: white;
                 width: 48px;
                 height: 48px;
@@ -248,10 +251,10 @@ function formatDate(dateString) {
                 text-decoration: none;
                 backdrop-filter: blur(10px);
                 transition: all 0.2s;
-                border: 1px solid rgba(255,255,255,0.2);
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
             .nav-btn:hover {
-                background: rgba(255,255,255,0.25);
+                background: rgba(255, 255, 255, 0.25);
                 transform: translateY(-50%) scale(1.05);
             }
             .nav-btn.disabled {
@@ -265,29 +268,31 @@ function formatDate(dateString) {
             .nav-btn.next {
                 right: 20px;
             }
-            
+
             /* 胶片条 */
             .filmstrip-wrapper {
                 position: relative;
                 flex-shrink: 0;
-                background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%);
-                border-top: 1px solid rgba(255,255,255,0.08);
+                background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 100%);
+                border-top: 1px solid rgba(255, 255, 255, 0.08);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
             }
             /* 顶部渐变发光效果 */
             .filmstrip-wrapper::before {
-                content: '';
+                content: "";
                 position: absolute;
                 top: 0;
                 left: 0;
                 right: 0;
                 height: 1px;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
             }
             .filmstrip {
-                height: 96px;
-                padding: 14px 16px;
+                height: 100px;
+                background: rgba(0, 0, 0, 0.8);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 12px 60px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 display: flex;
@@ -301,7 +306,14 @@ function formatDate(dateString) {
                 -webkit-overflow-scrolling: touch;
             }
             .filmstrip::-webkit-scrollbar {
-                display: none;
+                height: 6px;
+            }
+            .filmstrip::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .filmstrip::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 3px;
             }
             .filmstrip-item {
                 flex-shrink: 0;
@@ -311,7 +323,7 @@ function formatDate(dateString) {
                 overflow: hidden;
                 cursor: pointer;
                 transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                border: 2px solid rgba(255,255,255,0.15);
+                border: 2px solid rgba(255, 255, 255, 0.15);
                 opacity: 0.5;
                 filter: grayscale(40%);
                 position: relative;
@@ -319,7 +331,7 @@ function formatDate(dateString) {
             .filmstrip-item:hover {
                 opacity: 0.85;
                 filter: grayscale(0%);
-                border-color: rgba(255,255,255,0.4);
+                border-color: rgba(255, 255, 255, 0.4);
                 transform: scale(1.08);
             }
             .filmstrip-item.active {
@@ -327,7 +339,9 @@ function formatDate(dateString) {
                 opacity: 1;
                 filter: grayscale(0%);
                 transform: scale(1.12);
-                box-shadow: 0 0 20px rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.3);
+                box-shadow:
+                    0 0 20px rgba(255, 255, 255, 0.15),
+                    0 4px 12px rgba(0, 0, 0, 0.3);
             }
             .filmstrip-item img {
                 width: 100%;
@@ -335,12 +349,6 @@ function formatDate(dateString) {
                 object-fit: cover;
                 display: block;
             }
-            /* 虚拟滚动占位符 */
-            .filmstrip-placeholder {
-                flex-shrink: 0;
-                height: 64px;
-            }
-            
             @media (max-width: 768px) {
                 .photo-container {
                     flex-direction: column;
@@ -370,7 +378,7 @@ function formatDate(dateString) {
                     right: 10px;
                 }
                 .filmstrip-wrapper {
-                    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 100%);
+                    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 100%);
                 }
                 .filmstrip {
                     height: 76px;
@@ -387,27 +395,73 @@ function formatDate(dateString) {
                 }
             }
         </style>
-	</head>
-	<body>
-		<main class="photo-container">
+    </head>
+    <body>
+        <main class="photo-container">
             <div class="photo-main-wrapper">
                 <!-- 顶部工具栏 -->
                 <div class="toolbar">
                     <div class="toolbar-left">
                         <a href="/" class="toolbar-btn" aria-label="返回画廊">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg
+                            >
                         </a>
                         <span class="zoom-indicator" id="zoomIndicator">100%</span>
                     </div>
                     <div class="toolbar-right">
                         <button class="toolbar-btn" id="zoomOutBtn" aria-label="缩小">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"
+                                ></line></svg
+                            >
                         </button>
                         <button class="toolbar-btn" id="zoomInBtn" aria-label="放大">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"
+                                ></line><line x1="8" y1="11" x2="14" y2="11"></line></svg
+                            >
                         </button>
                         <button class="toolbar-btn" id="resetZoomBtn" aria-label="重置">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6-6m6 6v-4.8m0 4.8h-4.8"></path><path d="M3 16.2V21m0 0h4.8M3 21l6-6"></path><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"></path><path d="M3 7.8V3m0 0h4.8M3 3l6 6"></path></svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path d="M21 21l-6-6m6 6v-4.8m0 4.8h-4.8"></path><path d="M3 16.2V21m0 0h4.8M3 21l6-6"></path><path
+                                    d="M21 7.8V3m0 0h-4.8M21 3l-6 6"></path><path d="M3 7.8V3m0 0h4.8M3 3l6 6"></path></svg
+                            >
                         </button>
                     </div>
                 </div>
@@ -415,57 +469,92 @@ function formatDate(dateString) {
                 <!-- 图片主区域 -->
                 <div class="photo-main">
                     <!-- 上一张按钮 -->
-                    {prevPhoto ? (
-                        <a href={`/Gallery/${prevPhoto.key}`} class="nav-btn prev" aria-label="上一张">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </a>
-                    ) : (
-                        <span class="nav-btn prev disabled">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </span>
-                    )}
-                    
-                    <div class="image-container" id="imageContainer">
-                        <img 
-                            id="mainImage"
-                            src={Original?.url || thumbnails.large?.url || thumbnails.medium.url} 
-                            alt={filename} 
-                            draggable="false"
-                        />
-                    </div>
-                    
-                    <!-- 下一张按钮 -->
-                    {nextPhoto ? (
-                        <a href={`/Gallery/${nextPhoto.key}`} class="nav-btn next" aria-label="下一张">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </a>
-                    ) : (
-                        <span class="nav-btn next disabled">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </span>
-                    )}
-                </div>
-                
-                <!-- 胶片条 -->
-                <div class="filmstrip-wrapper">
-                    <div class="filmstrip" id="filmstrip">
-                        {allPhotos.map((p, index) => (
-                            <a 
-                                href={`/Gallery/${p.key}`} 
-                                class={`filmstrip-item ${index === currentIndex ? 'active' : ''}`}
-                                data-index={index}
-                            >
-                                <img 
-                                    src={p.thumbnails?.small?.url || p.thumbnails?.medium?.url} 
-                                    alt={p.filename}
-                                    loading="lazy"
-                                />
+                    {
+                        prevPhoto ? (
+                            <a href={`/Gallery/${prevPhoto.key}`} class="nav-btn prev" aria-label="上一张">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
                             </a>
-                        ))}
+                        ) : (
+                            <span class="nav-btn prev disabled">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
+                            </span>
+                        )
+                    }
+
+                    <div class="image-container" id="imageContainer">
+                        <img id="mainImage" src={original?.url || thumbnail?.url} alt={filename} transition:name={transitionName} draggable="false" />
                     </div>
+
+                    <!-- 下一张按钮 -->
+                    {
+                        nextPhoto ? (
+                            <a href={`/Gallery/${nextPhoto.key}`} class="nav-btn next" aria-label="下一张">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </a>
+                        ) : (
+                            <span class="nav-btn next disabled">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </span>
+                        )
+                    }
+                </div>
+
+                <!-- 胶片条 -->
+                <div class="filmstrip" id="filmstrip">
+                    {
+                        allPhotos.map((p, index) => (
+                            <a href={`/Gallery/${p.key}`} class={`filmstrip-item ${index === currentIndex ? "active" : ""}`} data-index={index}>
+                                <img src={p.thumbnail?.url} alt={p.filename} loading="lazy" />
+                            </a>
+                        ))
+                    }
                 </div>
             </div>
-            
+
             <aside class="photo-sidebar">
                 <div class="info-section">
                     <h3>基本信息</h3>
@@ -488,370 +577,343 @@ function formatDate(dateString) {
                         </div>
                         <div class="info-item" style="grid-column: span 2;">
                             <span class="info-label">拍摄时间</span>
-                            <span class="info-value">{exif?.DateTimeOriginal ? formatDate(exif.DateTimeOriginal) : formatDate(lastModified)}</span>
+                            <span class="info-value">{exif?.dateTime ? formatDate(exif.dateTime) : formatDate(lastModified)}</span>
                         </div>
                     </div>
                 </div>
 
-                {exif && (
-                    <div class="info-section">
-                        <h3>拍摄参数</h3>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-label">焦距</span>
-                                <span class="info-value">{exif.FocalLength ? `${exif.FocalLength}mm` : '--'}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">光圈</span>
-                                <span class="info-value">{exif.FNumber ? `f/${exif.FNumber}` : '--'}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">快门</span>
-                                <span class="info-value">{exif.ExposureTime ? (exif.ExposureTime < 1 ? `1/${Math.round(1/exif.ExposureTime)}` : exif.ExposureTime) + 's' : '--'}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">ISO</span>
-                                <span class="info-value">{exif.ISO || '--'}</span>
+                {
+                    exif && (
+                        <div class="info-section">
+                            <h3>拍摄参数</h3>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">焦距</span>
+                                    <span class="info-value">{exif.focalLength ? `${exif.focalLength}mm` : "--"}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">光圈</span>
+                                    <span class="info-value">{exif.fNumber ? `f/${exif.fNumber}` : "--"}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">快门</span>
+                                    <span class="info-value">
+                                        {exif.exposureTime
+                                            ? (exif.exposureTime < 1 ? `1/${Math.round(1 / exif.exposureTime)}` : exif.exposureTime) + "s"
+                                            : "--"}
+                                    </span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">ISO</span>
+                                    <span class="info-value">{exif.iso || "--"}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
-                {exif && (exif.Make || exif.Model || exif.LensModel) && (
-                    <div class="info-section">
-                        <h3>设备信息</h3>
-                        <div class="info-item" style="margin-bottom: 12px;">
-                            <span class="info-label">相机</span>
-                            <span class="info-value">{exif.Make} {exif.Model}</span>
-                        </div>
-                        {exif.LensModel && (
-                            <div class="info-item">
-                                <span class="info-label">镜头</span>
-                                <span class="info-value">{exif.LensModel}</span>
+                {
+                    exif && (exif.make || exif.model || exif.lensModel) && (
+                        <div class="info-section">
+                            <h3>设备信息</h3>
+                            <div class="info-item" style="margin-bottom: 12px;">
+                                <span class="info-label">相机</span>
+                                <span class="info-value">
+                                    {exif.make} {exif.model}
+                                </span>
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {tags && tags.length > 0 && (
-                    <div class="info-section">
-                        <h3>标签</h3>
-                        <div class="tag-cloud">
-                            {tags.map((tag: string) => (
-                                <span class="tag">#{tag}</span>
-                            ))}
+                            {exif.lensModel && (
+                                <div class="info-item">
+                                    <span class="info-label">镜头</span>
+                                    <span class="info-value">{exif.lensModel}</span>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                )}
+                    )
+                }
+
+                {
+                    tags && tags.length > 0 && (
+                        <div class="info-section">
+                            <h3>标签</h3>
+                            <div class="tag-cloud">
+                                {tags.map((tag: string) => (
+                                    <span class="tag">#{tag}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                }
             </aside>
-		</main>
-        
+        </main>
+
         <!-- 存储导航信息供 JS 使用 -->
         <script define:vars={{ prevPhotoKey: prevPhoto?.key || null, nextPhotoKey: nextPhoto?.key || null, currentIndex }}>
             window.__photoNav = {
                 prevKey: prevPhotoKey,
                 nextKey: nextPhotoKey,
-                currentIndex: currentIndex
-            };
+                currentIndex: currentIndex,
+            }
         </script>
-        
+
         <script>
             // 图片缩放和拖拽功能
-            // 使用 astro:page-load 事件确保在 View Transitions 导航后重新初始化
-            function initGalleryPage() {
-                const container = document.getElementById('imageContainer');
-                const img = document.getElementById('mainImage') as HTMLImageElement | null;
-                const zoomIndicator = document.getElementById('zoomIndicator');
-                const zoomInBtn = document.getElementById('zoomInBtn');
-                const zoomOutBtn = document.getElementById('zoomOutBtn');
-                const resetZoomBtn = document.getElementById('resetZoomBtn');
-                const filmstrip = document.getElementById('filmstrip');
-                
-                if (!container || !img) return;
-                
+            ;(function () {
+                const container = document.getElementById("imageContainer")
+                const img = document.getElementById("mainImage")
+                const zoomIndicator = document.getElementById("zoomIndicator")
+                const zoomInBtn = document.getElementById("zoomInBtn")
+                const zoomOutBtn = document.getElementById("zoomOutBtn")
+                const resetZoomBtn = document.getElementById("resetZoomBtn")
+                const filmstrip = document.getElementById("filmstrip")
+
+                if (!container || !img) return
+
                 // 缩放状态
-                let scale = 1;
-                let translateX = 0;
-                let translateY = 0;
-                const MIN_SCALE = 0.5;
-                const MAX_SCALE = 5;
-                const ZOOM_STEP = 0.25;
-                
+                let scale = 1
+                let translateX = 0
+                let translateY = 0
+                const MIN_SCALE = 0.5
+                const MAX_SCALE = 5
+                const ZOOM_STEP = 0.25
+
                 // 拖拽状态
-                let isDragging = false;
-                let startX = 0;
-                let startY = 0;
-                let lastTranslateX = 0;
-                let lastTranslateY = 0;
-                
+                let isDragging = false
+                let startX = 0
+                let startY = 0
+                let lastTranslateX = 0
+                let lastTranslateY = 0
+
                 // 触摸缩放状态
-                let initialPinchDistance = 0;
-                let initialScale = 1;
-                
+                let initialPinchDistance = 0
+                let initialScale = 1
+
                 function updateTransform() {
-                    img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-                    zoomIndicator.textContent = `${Math.round(scale * 100)}%`;
+                    img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`
+                    zoomIndicator.textContent = `${Math.round(scale * 100)}%`
                 }
-                
+
                 function resetZoom() {
-                    scale = 1;
-                    translateX = 0;
-                    translateY = 0;
-                    updateTransform();
+                    scale = 1
+                    translateX = 0
+                    translateY = 0
+                    updateTransform()
                 }
-                
+
                 function zoomIn() {
-                    scale = Math.min(MAX_SCALE, scale + ZOOM_STEP);
-                    updateTransform();
+                    scale = Math.min(MAX_SCALE, scale + ZOOM_STEP)
+                    updateTransform()
                 }
-                
+
                 function zoomOut() {
-                    scale = Math.max(MIN_SCALE, scale - ZOOM_STEP);
+                    scale = Math.max(MIN_SCALE, scale - ZOOM_STEP)
                     if (scale <= 1) {
-                        translateX = 0;
-                        translateY = 0;
+                        translateX = 0
+                        translateY = 0
                     }
-                    updateTransform();
+                    updateTransform()
                 }
-                
+
                 // 鼠标滚轮缩放
-                container.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    
-                    const rect = container.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left - rect.width / 2;
-                    const mouseY = e.clientY - rect.top - rect.height / 2;
-                    
-                    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-                    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta));
-                    
-                    if (newScale !== scale) {
-                        // 缩放时保持鼠标位置不变
-                        const scaleFactor = newScale / scale;
-                        translateX = mouseX - (mouseX - translateX) * scaleFactor;
-                        translateY = mouseY - (mouseY - translateY) * scaleFactor;
-                        scale = newScale;
-                        
-                        if (scale <= 1) {
-                            translateX = 0;
-                            translateY = 0;
+                container.addEventListener(
+                    "wheel",
+                    (e) => {
+                        e.preventDefault()
+
+                        const rect = container.getBoundingClientRect()
+                        const mouseX = e.clientX - rect.left - rect.width / 2
+                        const mouseY = e.clientY - rect.top - rect.height / 2
+
+                        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+                        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta))
+
+                        if (newScale !== scale) {
+                            // 缩放时保持鼠标位置不变
+                            const scaleFactor = newScale / scale
+                            translateX = mouseX - (mouseX - translateX) * scaleFactor
+                            translateY = mouseY - (mouseY - translateY) * scaleFactor
+                            scale = newScale
+
+                            if (scale <= 1) {
+                                translateX = 0
+                                translateY = 0
+                            }
+
+                            updateTransform()
                         }
-                        
-                        updateTransform();
-                    }
-                }, { passive: false });
-                
+                    },
+                    { passive: false }
+                )
+
                 // 鼠标拖拽
-                container.addEventListener('mousedown', (e) => {
+                container.addEventListener("mousedown", (e) => {
                     if (scale > 1) {
-                        isDragging = true;
-                        container.classList.add('dragging');
-                        startX = e.clientX;
-                        startY = e.clientY;
-                        lastTranslateX = translateX;
-                        lastTranslateY = translateY;
-                        e.preventDefault();
+                        isDragging = true
+                        container.classList.add("dragging")
+                        startX = e.clientX
+                        startY = e.clientY
+                        lastTranslateX = translateX
+                        lastTranslateY = translateY
+                        e.preventDefault()
                     }
-                });
-                
-                document.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    
-                    translateX = lastTranslateX + (e.clientX - startX);
-                    translateY = lastTranslateY + (e.clientY - startY);
-                    updateTransform();
-                });
-                
-                document.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    container.classList.remove('dragging');
-                });
-                
+                })
+
+                document.addEventListener("mousemove", (e) => {
+                    if (!isDragging) return
+
+                    translateX = lastTranslateX + (e.clientX - startX)
+                    translateY = lastTranslateY + (e.clientY - startY)
+                    updateTransform()
+                })
+
+                document.addEventListener("mouseup", () => {
+                    isDragging = false
+                    container.classList.remove("dragging")
+                })
+
                 // 触摸事件处理
                 function getTouchDistance(touches) {
-                    const dx = touches[0].clientX - touches[1].clientX;
-                    const dy = touches[0].clientY - touches[1].clientY;
-                    return Math.sqrt(dx * dx + dy * dy);
+                    const dx = touches[0].clientX - touches[1].clientX
+                    const dy = touches[0].clientY - touches[1].clientY
+                    return Math.sqrt(dx * dx + dy * dy)
                 }
-                
+
                 function getTouchCenter(touches) {
                     return {
                         x: (touches[0].clientX + touches[1].clientX) / 2,
-                        y: (touches[0].clientY + touches[1].clientY) / 2
-                    };
+                        y: (touches[0].clientY + touches[1].clientY) / 2,
+                    }
                 }
-                
-                container.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 2) {
-                        // 双指缩放开始
-                        e.preventDefault();
-                        initialPinchDistance = getTouchDistance(e.touches);
-                        initialScale = scale;
-                    } else if (e.touches.length === 1 && scale > 1) {
-                        // 单指拖拽开始
-                        isDragging = true;
-                        startX = e.touches[0].clientX;
-                        startY = e.touches[0].clientY;
-                        lastTranslateX = translateX;
-                        lastTranslateY = translateY;
-                    }
-                }, { passive: false });
-                
-                container.addEventListener('touchmove', (e) => {
-                    if (e.touches.length === 2) {
-                        // 双指缩放
-                        e.preventDefault();
-                        const currentDistance = getTouchDistance(e.touches);
-                        const scaleChange = currentDistance / initialPinchDistance;
-                        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, initialScale * scaleChange));
-                        
-                        const rect = container.getBoundingClientRect();
-                        const center = getTouchCenter(e.touches);
-                        const centerX = center.x - rect.left - rect.width / 2;
-                        const centerY = center.y - rect.top - rect.height / 2;
-                        
-                        const scaleFactor = newScale / scale;
-                        translateX = centerX - (centerX - translateX) * scaleFactor;
-                        translateY = centerY - (centerY - translateY) * scaleFactor;
-                        scale = newScale;
-                        
-                        if (scale <= 1) {
-                            translateX = 0;
-                            translateY = 0;
+
+                container.addEventListener(
+                    "touchstart",
+                    (e) => {
+                        if (e.touches.length === 2) {
+                            // 双指缩放开始
+                            e.preventDefault()
+                            initialPinchDistance = getTouchDistance(e.touches)
+                            initialScale = scale
+                        } else if (e.touches.length === 1 && scale > 1) {
+                            // 单指拖拽开始
+                            isDragging = true
+                            startX = e.touches[0].clientX
+                            startY = e.touches[0].clientY
+                            lastTranslateX = translateX
+                            lastTranslateY = translateY
                         }
-                        
-                        updateTransform();
-                    } else if (e.touches.length === 1 && isDragging) {
-                        // 单指拖拽
-                        e.preventDefault();
-                        translateX = lastTranslateX + (e.touches[0].clientX - startX);
-                        translateY = lastTranslateY + (e.touches[0].clientY - startY);
-                        updateTransform();
-                    }
-                }, { passive: false });
-                
-                container.addEventListener('touchend', () => {
-                    isDragging = false;
-                    initialPinchDistance = 0;
-                });
-                
+                    },
+                    { passive: false }
+                )
+
+                container.addEventListener(
+                    "touchmove",
+                    (e) => {
+                        if (e.touches.length === 2) {
+                            // 双指缩放
+                            e.preventDefault()
+                            const currentDistance = getTouchDistance(e.touches)
+                            const scaleChange = currentDistance / initialPinchDistance
+                            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, initialScale * scaleChange))
+
+                            const rect = container.getBoundingClientRect()
+                            const center = getTouchCenter(e.touches)
+                            const centerX = center.x - rect.left - rect.width / 2
+                            const centerY = center.y - rect.top - rect.height / 2
+
+                            const scaleFactor = newScale / scale
+                            translateX = centerX - (centerX - translateX) * scaleFactor
+                            translateY = centerY - (centerY - translateY) * scaleFactor
+                            scale = newScale
+
+                            if (scale <= 1) {
+                                translateX = 0
+                                translateY = 0
+                            }
+
+                            updateTransform()
+                        } else if (e.touches.length === 1 && isDragging) {
+                            // 单指拖拽
+                            e.preventDefault()
+                            translateX = lastTranslateX + (e.touches[0].clientX - startX)
+                            translateY = lastTranslateY + (e.touches[0].clientY - startY)
+                            updateTransform()
+                        }
+                    },
+                    { passive: false }
+                )
+
+                container.addEventListener("touchend", () => {
+                    isDragging = false
+                    initialPinchDistance = 0
+                })
+
                 // 双击重置
-                let lastTap = 0;
-                container.addEventListener('touchend', (e) => {
-                    const currentTime = new Date().getTime();
-                    const tapLength = currentTime - lastTap;
+                let lastTap = 0
+                container.addEventListener("touchend", (e) => {
+                    const currentTime = new Date().getTime()
+                    const tapLength = currentTime - lastTap
                     if (tapLength < 300 && tapLength > 0) {
-                        e.preventDefault();
+                        e.preventDefault()
                         if (scale === 1) {
-                            scale = 2;
+                            scale = 2
                         } else {
-                            scale = 1;
-                            translateX = 0;
-                            translateY = 0;
+                            scale = 1
+                            translateX = 0
+                            translateY = 0
                         }
-                        updateTransform();
+                        updateTransform()
                     }
-                    lastTap = currentTime;
-                });
-                
+                    lastTap = currentTime
+                })
+
                 // 按钮事件
-                zoomInBtn?.addEventListener('click', zoomIn);
-                zoomOutBtn?.addEventListener('click', zoomOut);
-                resetZoomBtn?.addEventListener('click', resetZoom);
-                
-                // 滚动胶片条到当前项（居中显示）
-                const activeItem = filmstrip?.querySelector('.filmstrip-item.active') as HTMLElement | null;
-                if (activeItem && filmstrip) {
-                    // 计算需要滚动的位置，使当前项居中
-                    const scrollToCenter = () => {
-                        const containerWidth = filmstrip.offsetWidth;
-                        const itemWidth = activeItem.offsetWidth;
-                        const itemLeft = activeItem.offsetLeft;
-                        const scrollLeft = itemLeft - containerWidth / 2 + itemWidth / 2;
-                        return scrollLeft;
-                    };
-                    
-                    // 页面加载时立即定位（无动画），避免从头滚动的视觉问题
-                    filmstrip.style.scrollBehavior = 'auto';
-                    filmstrip.scrollLeft = scrollToCenter();
-                    
-                    // 恢复平滑滚动，供后续交互使用
-                    requestAnimationFrame(() => {
-                        filmstrip.style.scrollBehavior = 'smooth';
-                    });
-                }
-                
-                // 胶片条鼠标滚轮横向滚动
-                if (filmstrip) {
-                    filmstrip.addEventListener('wheel', (e) => {
-                        e.preventDefault();
-                        
-                        // 优先使用触控板的横向滚动 (deltaX)
-                        // 如果没有横向滚动，则将垂直滚动 (deltaY) 转换为横向滚动
-                        const scrollAmount = Math.abs(e.deltaX) > Math.abs(e.deltaY) 
-                            ? e.deltaX 
-                            : e.deltaY;
-                        
-                        filmstrip.scrollLeft += scrollAmount;
-                    }, { passive: false });
-                }
-                
-                // 存储当前页面的缩放函数供键盘事件使用
-                (window as any).__currentZoomFns = { zoomIn, zoomOut, resetZoom };
-            }
-            
-            // 键盘快捷键处理（只绑定一次，避免重复）
-            let keyboardHandlerBound = false;
-            function setupKeyboardHandler() {
-                if (keyboardHandlerBound) return;
-                keyboardHandlerBound = true;
-                
-                document.addEventListener('keydown', (e) => {
-                    const nav = (window as any).__photoNav;
-                    const zoomFns = (window as any).__currentZoomFns;
-                    
-                    // 只在详情页处理键盘事件
-                    if (!nav) return;
-                    
+                zoomInBtn?.addEventListener("click", zoomIn)
+                zoomOutBtn?.addEventListener("click", zoomOut)
+                resetZoomBtn?.addEventListener("click", resetZoom)
+
+                // 键盘快捷键
+                document.addEventListener("keydown", (e) => {
+                    const nav = window.__photoNav
+
                     switch (e.key) {
-                        case 'ArrowLeft':
+                        case "ArrowLeft":
                             if (nav?.prevKey) {
-                                // 使用 Astro 的 navigate API 或直接链接跳转
-                                const link = document.querySelector(`a[href="/Gallery/${nav.prevKey}"]`) as HTMLAnchorElement;
-                                if (link) link.click();
+                                window.location.href = `/Gallery/${nav.prevKey}`
                             }
-                            break;
-                        case 'ArrowRight':
+                            break
+                        case "ArrowRight":
                             if (nav?.nextKey) {
-                                const link = document.querySelector(`a[href="/Gallery/${nav.nextKey}"]`) as HTMLAnchorElement;
-                                if (link) link.click();
+                                window.location.href = `/Gallery/${nav.nextKey}`
                             }
-                            break;
-                        case '+':
-                        case '=':
-                            e.preventDefault();
-                            zoomFns?.zoomIn?.();
-                            break;
-                        case '-':
-                        case '_':
-                            e.preventDefault();
-                            zoomFns?.zoomOut?.();
-                            break;
-                        case '0':
-                            e.preventDefault();
-                            zoomFns?.resetZoom?.();
-                            break;
-                        case 'Escape':
-                            const backLink = document.querySelector('a[href="/"]') as HTMLAnchorElement;
-                            if (backLink) backLink.click();
-                            break;
+                            break
+                        case "+":
+                        case "=":
+                            e.preventDefault()
+                            zoomIn()
+                            break
+                        case "-":
+                        case "_":
+                            e.preventDefault()
+                            zoomOut()
+                            break
+                        case "0":
+                            e.preventDefault()
+                            resetZoom()
+                            break
+                        case "Escape":
+                            window.location.href = "/"
+                            break
                     }
-                });
-            }
-            
-            // 初始加载时执行
-            initGalleryPage();
-            setupKeyboardHandler();
+                })
+
+                // 滚动胶片条到当前项
+                const activeItem = filmstrip?.querySelector(".filmstrip-item.active")
+                if (activeItem && filmstrip) {
+                    setTimeout(() => {
+                        activeItem.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
+                    }, 100)
+                }
+            })()
         </script>
-	</body>
+    </body>
 </html>

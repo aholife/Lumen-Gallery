@@ -20,6 +20,10 @@ export class R2Storage implements StorageProvider {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
+      // Cloudflare R2 不支持 AWS SDK v3 新的校验头
+      // 参考: https://github.com/aws/aws-sdk-js-v3/issues/6810
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
     this.bucket = config.bucket;
     this.publicUrl = config.publicUrl;
