@@ -69,6 +69,7 @@
 - R2 兼容性需配置 `requestChecksumCalculation` 和 `responseChecksumValidation`
 - `sharp.rotate()` 自动根据 EXIF Orientation 旋转，`getImageDimensions()` 需考虑旋转后尺寸
 - GPS 数据展示需做模糊化处理以保护隐私
+- R2 构建默认忽略 `.thumbnails` 目录，可通过 `R2_IGNORE_DIRS` 环境变量追加其他忽略目录
 
 ## 📂 关键文件索引
 

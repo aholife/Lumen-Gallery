@@ -72,4 +72,6 @@ export interface ProcessImageOptions {
   outputFormat?: "jpg" | "webp"
   // 输出质量 (1-100)
   quality?: number
+  // 忽略的目录名称列表
+  ignoreDirs?: string[]
 }

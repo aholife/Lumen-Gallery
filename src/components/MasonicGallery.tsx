@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, memo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 import { Masonry } from 'masonic';
 import { thumbHashToRGBA } from 'thumbhash';
 
@@ -78,6 +78,7 @@ const ThumbHashImage: React.FC<{
           onError={() => setStatus('error')}
           loading="lazy"
           decoding="async"
+          style={transitionName ? { viewTransitionName: transitionName } as any : undefined}
         />
       )}
 
@@ -91,13 +92,7 @@ const ThumbHashImage: React.FC<{
 };
 
 // ========== 照片卡片组件（使用 memo 优化） ==========
-interface PhotoCardProps {
-  data: Photo;
-  index: number;
-  onOpen: (index: number) => void;
-}
-
-const PhotoCard = memo(({ data: photo, index, onOpen }: PhotoCardProps) => {
+const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
   const formatBytes = (bytes: number, decimals = 1) => {
     if (!bytes) return '0B';
     const k = 1024;
@@ -106,10 +101,7 @@ const PhotoCard = memo(({ data: photo, index, onOpen }: PhotoCardProps) => {
     return `${(bytes / Math.pow(k, i)).toFixed(decimals)}${sizes[i]}`;
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onOpen(index);
-  };
+  const transitionName = `photo-${photo.id}`;
 
   return (
     <div className="w-full">
@@ -140,8 +132,8 @@ const PhotoCard = memo(({ data: photo, index, onOpen }: PhotoCardProps) => {
             <span>{formatBytes(photo.size)}</span>
           </div>
         </div>
+      </a>
     </div>
-    </div >
   );
 });
 
@@ -152,10 +144,6 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
   ({ photos, columnWidth = 300, columnGutter = 10 }, ref) => {
     const [positionIndex, setPositionIndex] = useState(0);
     const itemCounter = useRef(photos.length);
-
-    // 图片查看器状态
-    const [viewerOpen, setViewerOpen] = useState(false);
-    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
     // 暴露重新布局方法（学习自 Afilmory）
     useImperativeHandle(ref, () => ({
@@ -174,27 +162,6 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
     useEffect(() => {
       setIsMounted(true);
     }, []);
-
-    // 打开图片查看器
-    const handleOpenViewer = useCallback((index: number) => {
-      setCurrentPhotoIndex(index);
-      setViewerOpen(true);
-    }, []);
-
-    // 关闭图片查看器
-    const handleCloseViewer = useCallback(() => {
-      setViewerOpen(false);
-    }, []);
-
-    // 导航到指定图片
-    const handleNavigate = useCallback((index: number) => {
-      setCurrentPhotoIndex(index);
-    }, []);
-
-    // 自定义渲染函数，传递 index 和 onOpen
-    const renderPhoto = useCallback(({ data, index }: { data: Photo; index: number }) => (
-      <PhotoCard data={data} index={index} onOpen={handleOpenViewer} />
-    ), [handleOpenViewer]);
 
     if (!isMounted) {
       // SSR 占位，避免水合不匹配
@@ -216,19 +183,10 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
         <Masonry
           key={shrunk ? `shrunk-${Date.now()}` : `normal-${positionIndex}`}
           items={photos}
-          render={renderPhoto}
+          render={PhotoCard}
           columnGutter={columnGutter}
           columnWidth={columnWidth}
           overscanBy={5}
-        />
-
-        {/* 自定义图片查看器 */}
-        <PhotoViewer
-          photos={photos}
-          currentIndex={currentPhotoIndex}
-          isOpen={viewerOpen}
-          onClose={handleCloseViewer}
-          onNavigate={handleNavigate}
         />
       </div>
     );

@@ -36,14 +36,23 @@ async function main() {
     
     console.log('✓ R2 Storage loaded\n');
 
-    // 2. 处理图片（生成缩略图并上传到 R2）
+    // 2. 解析忽略目录配置（默认始终忽略 .thumbnails）
+    const defaultIgnore = ['.thumbnails'];
+    const envIgnore = process.env.R2_IGNORE_DIRS
+      ? process.env.R2_IGNORE_DIRS.split(',').map(d => d.trim()).filter(Boolean)
+      : [];
+    const ignoreDirs = [...new Set([...defaultIgnore, ...envIgnore])];
+    console.log(`🚫 Ignored directories: ${ignoreDirs.join(', ')}\n`);
+
+    // 3. 处理图片（生成缩略图并上传到 R2）
     const metadata = await processImagesR2(storage, {
       thumbnailSize: 800,
       outputFormat: 'webp',
       quality: 85,
+      ignoreDirs,
     });
 
-    // 3. 保存元数据到本地
+    // 4. 保存元数据到本地
     const metadataPath = join(process.cwd(), 'public', 'photos.json');
     await saveMetadataR2(metadata, metadataPath);
 

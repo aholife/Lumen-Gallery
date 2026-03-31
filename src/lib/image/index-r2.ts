@@ -145,8 +145,21 @@ export async function processImagesR2(
   console.log("🖼️  Starting R2 image processing...\n")
   console.log("📡 Mode: Upload thumbnail to R2, no local storage\n")
 
-  const files = await storage.listFiles()
-  console.log(`Found ${files.length} images\n`)
+  const allFiles = await storage.listFiles()
+  
+  // 过滤忽略目录（默认始终忽略 .thumbnails）
+  const defaultIgnore = ['.thumbnails']
+  const ignoreDirs = [...new Set([...defaultIgnore, ...(options.ignoreDirs || [])])]
+  const files = allFiles.filter(file => {
+    return !ignoreDirs.some(dir => 
+      file.key.startsWith(`${dir}/`) || file.key.includes(`/${dir}/`)
+    )
+  })
+  
+  if (allFiles.length !== files.length) {
+    console.log(`Found ${allFiles.length} total files, ${allFiles.length - files.length} ignored (dirs: ${ignoreDirs.join(', ')})`)
+  }
+  console.log(`Processing ${files.length} images\n`)
 
   const results: ImageMetadata[] = []
 

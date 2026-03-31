@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-03-31 — R2 构建忽略目录功能 & .thumbnails 过滤修复
+
+**问题**: R2 模式构建时 `storage.listFiles()` 会返回存储桶中所有对象，包括 `.thumbnails/` 下的缩略图，导致缩略图被当作原图再次处理并出现在 `photos.json` 中。
+
+**解决方案**:
+1. 新增 `R2_IGNORE_DIRS` 环境变量，支持逗号分隔的多个目录名
+2. `.thumbnails` 作为硬编码默认忽略项，无论环境变量是否配置都生效
+3. `processImagesR2()` 新增 `ignoreDirs` 参数，在文件列表阶段提前过滤
+
+**受影响文件**:
+- `.env.example` — 新增 `R2_IGNORE_DIRS` 配置项
+- `src/lib/image/types.ts` — `ProcessImageOptions` 新增 `ignoreDirs` 字段
+- `scripts/build-images-r2.ts` — 读取环境变量并合并默认忽略项
+- `src/lib/image/index-r2.ts` — 文件列表过滤逻辑
+
+---
+
 ## 2026-03-12 — 修复 Node 脚本环境变量问题
 
 **问题**: tsx 直接执行脚本时 `import.meta.env` 为 `undefined`，`process.env` 也为空。
