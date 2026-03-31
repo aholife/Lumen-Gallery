@@ -14,7 +14,7 @@ import { extractExif } from "./exif"
  * ├── photos/           # 原图（用户上传）
  * │   └── cat/
  * │       └── photo.jpg
- * └── thumbnails/       # 缩略图（构建时生成上传）
+ * └── .thumbnails/       # 缩略图（构建时生成上传）
  *     └── cat/
  *         └── photo_thumb.jpg
  */
@@ -73,7 +73,7 @@ export async function processImageR2(
   const fileDir = dirname(fileKey)
   
   const thumbFilename = `${filename}_thumb.${ext}`
-  const r2Key = `thumbnails/${fileDir}/${thumbFilename}`.replace(/\/+/g, '/')
+  const r2Key = `.thumbnails/${fileDir}/${thumbFilename}`.replace(/\/+/g, '/')
   
   await storage.uploadFile(r2Key, thumbnail.buffer, `image/${ext === 'jpg' ? 'jpeg' : ext}`)
   const thumbnailUrl = storage.getPublicUrl(r2Key)

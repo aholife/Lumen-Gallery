@@ -9,6 +9,7 @@
  * 用法: tsx scripts/build-images-r2.ts
  */
 
+import 'dotenv/config';
 import { processImagesR2, saveMetadataR2 } from '../src/lib/image/index-r2';
 import { loadStorageFromEnv } from '../src/lib/storage/index';
 import { join } from 'path';
@@ -57,7 +58,7 @@ async function main() {
     console.log('💡 Your R2 bucket structure:');
     console.log('   your-bucket/');
     console.log('   ├── photos/        (original images)');
-    console.log('   └── thumbnails/    (single thumbnail per image)');
+    console.log('   └── .thumbnails/    (single thumbnail per image)');
     console.log('━'.repeat(50));
     
   } catch (error) {
