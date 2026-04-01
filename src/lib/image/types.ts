@@ -37,6 +37,7 @@ export interface ImageMetadata {
   size: number // 文件大小（字节）
   format: string // 格式 (jpg, png, heic 等)
   lastModified: Date
+  etag?: string // 原图内容哈希（R2 ETag），用于增量构建时检测文件变更
 
   // 图片尺寸
   width: number
@@ -74,4 +75,6 @@ export interface ProcessImageOptions {
   quality?: number
   // 忽略的目录名称列表
   ignoreDirs?: string[]
+  // 已有的元数据（用于增量构建跳过已处理的图片）
+  existingMetadata?: ImageMetadata[]
 }

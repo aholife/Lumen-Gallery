@@ -10,8 +10,10 @@
  */
 
 import 'dotenv/config';
+import { readFile } from 'fs/promises';
 import { processImagesR2, saveMetadataR2 } from '../src/lib/image/index-r2';
 import { loadStorageFromEnv } from '../src/lib/storage/index';
+import type { ImageMetadata } from '../src/lib/image/types';
 import { join } from 'path';
 
 async function main() {
@@ -44,16 +46,27 @@ async function main() {
     const ignoreDirs = [...new Set([...defaultIgnore, ...envIgnore])];
     console.log(`🚫 Ignored directories: ${ignoreDirs.join(', ')}\n`);
 
-    // 3. 处理图片（生成缩略图并上传到 R2）
+    // 3. 加载已有的 photos.json（用于增量构建跳过已处理图片）
+    const metadataPath = join(process.cwd(), 'public', 'photos.json');
+    let existingMetadata: ImageMetadata[] = [];
+    try {
+      const raw = await readFile(metadataPath, 'utf-8');
+      existingMetadata = JSON.parse(raw);
+      console.log(`📂 Loaded existing metadata: ${existingMetadata.length} entries\n`);
+    } catch {
+      console.log('📂 No existing photos.json found, processing all images\n');
+    }
+
+    // 4. 处理图片（生成缩略图并上传到 R2）
     const metadata = await processImagesR2(storage, {
       thumbnailSize: 800,
       outputFormat: 'webp',
       quality: 85,
       ignoreDirs,
+      existingMetadata,
     });
 
-    // 4. 保存元数据到本地
-    const metadataPath = join(process.cwd(), 'public', 'photos.json');
+    // 5. 保存元数据到本地
     await saveMetadataR2(metadata, metadataPath);
 
     console.log('\n' + '━'.repeat(50));

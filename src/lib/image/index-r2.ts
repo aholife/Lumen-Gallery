@@ -6,6 +6,17 @@ import type { ImageMetadata, ProcessImageOptions } from "./types"
 import { generateThumbnail, generateThumbHash, convertImage, detectImageFormat, getImageDimensions } from "./processor"
 import { extractExif } from "./exif"
 
+/** 支持的图片扩展名 */
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.tiff', '.tif', '.avif', '.bmp'])
+
+/** 根据文件 key 和输出格式计算缩略图的 R2 key */
+function getThumbnailR2Key(fileKey: string, outputFormat: string = 'webp'): string {
+  const filename = basename(fileKey, extname(fileKey))
+  const fileDir = dirname(fileKey)
+  const thumbFilename = `${filename}_thumb.${outputFormat}`
+  return `.thumbnails/${fileDir}/${thumbFilename}`.replace(/\/+/g, '/')
+}
+
 /**
  * R2 专用图片处理 - 缩略图上传到 R2，本地不保存图片
  * 
@@ -21,7 +32,8 @@ import { extractExif } from "./exif"
 export async function processImageR2(
   storage: StorageProvider, 
   fileKey: string, 
-  options: ProcessImageOptions = {}
+  options: ProcessImageOptions = {},
+  fileEtag?: string
 ): Promise<ImageMetadata> {
   console.log(`Processing: ${fileKey}`)
 
@@ -69,11 +81,7 @@ export async function processImageR2(
   })
 
   // 8. 上传缩略图到 R2
-  const filename = basename(fileKey, extname(fileKey))
-  const fileDir = dirname(fileKey)
-  
-  const thumbFilename = `${filename}_thumb.${ext}`
-  const r2Key = `.thumbnails/${fileDir}/${thumbFilename}`.replace(/\/+/g, '/')
+  const r2Key = getThumbnailR2Key(fileKey, ext)
   
   await storage.uploadFile(r2Key, thumbnail.buffer, `image/${ext === 'jpg' ? 'jpeg' : ext}`)
   const thumbnailUrl = storage.getPublicUrl(r2Key)
@@ -85,6 +93,8 @@ export async function processImageR2(
   
   if (needsConversion) {
     // 如果需要格式转换，上传转换后的图片
+    const filename = basename(fileKey, extname(fileKey))
+    const fileDir = dirname(fileKey)
     const fullFilename = `${filename}.${ext}`
     const r2FullKey = `photos/${fileDir}/${fullFilename}`.replace(/\/+/g, '/')
     
@@ -112,6 +122,7 @@ export async function processImageR2(
     size: originalBuffer.length,
     format: needsConversion ? "jpg" : format,
     lastModified: new Date(),
+    etag: fileEtag,
     width: dimensions.width,
     height: dimensions.height,
     exif,
@@ -151,25 +162,65 @@ export async function processImagesR2(
   const defaultIgnore = ['.thumbnails']
   const ignoreDirs = [...new Set([...defaultIgnore, ...(options.ignoreDirs || [])])]
   const files = allFiles.filter(file => {
+    // 跳过空文件 / 目录标记（R2 中 size=0 的条目）
+    if (file.size === 0) return false
+    // 跳过非图片文件
+    const ext = extname(file.key).toLowerCase()
+    if (!IMAGE_EXTENSIONS.has(ext)) return false
+    // 跳过忽略目录
     return !ignoreDirs.some(dir => 
       file.key.startsWith(`${dir}/`) || file.key.includes(`/${dir}/`)
     )
   })
   
   if (allFiles.length !== files.length) {
-    console.log(`Found ${allFiles.length} total files, ${allFiles.length - files.length} ignored (dirs: ${ignoreDirs.join(', ')})`)
+    console.log(`Found ${allFiles.length} total files, ${allFiles.length - files.length} filtered out (non-image / empty / ignored dirs: ${ignoreDirs.join(', ')})`)
   }
+
+  // 查询已存在的缩略图，用于跳过已处理的图片
+  const outputFormat = options.outputFormat || 'webp'
+  const existingThumbs = await storage.listFiles('.thumbnails/')
+  const existingThumbKeys = new Set(existingThumbs.map(f => f.key))
+  
+  // 构建已有元数据索引（按 key 查找）
+  const existingMetaMap = new Map<string, ImageMetadata>()
+  if (options.existingMetadata) {
+    for (const m of options.existingMetadata) {
+      existingMetaMap.set(m.key, m)
+    }
+  }
+
+  let skippedCount = 0
   console.log(`Processing ${files.length} images\n`)
 
   const results: ImageMetadata[] = []
 
   for (const file of files) {
     try {
-      const metadata = await processImageR2(storage, file.key, options)
+      // 检查缩略图是否已存在且有对应的元数据，且原图未被替换（etag 一致）
+      const thumbKey = getThumbnailR2Key(file.key, outputFormat)
+      const existingMeta = existingMetaMap.get(file.key)
+      if (existingThumbKeys.has(thumbKey) && existingMeta) {
+        // 比对 etag：如果原图内容未变更则跳过，否则重新处理
+        if (existingMeta.etag && file.etag && existingMeta.etag === file.etag) {
+          console.log(`⏭ Skipped (unchanged): ${file.key}`)
+          results.push(existingMeta)
+          skippedCount++
+          continue
+        } else {
+          console.log(`🔄 Changed (etag mismatch): ${file.key}`)
+        }
+      }
+
+      const metadata = await processImageR2(storage, file.key, options, file.etag)
       results.push(metadata)
     } catch (error) {
       console.error(`✗ Failed to process ${file.key}:`, error)
     }
+  }
+
+  if (skippedCount > 0) {
+    console.log(`\n⏭ Skipped ${skippedCount} already-processed images`)
   }
 
   console.log(`\n✅ Processed ${results.length}/${files.length} images`)

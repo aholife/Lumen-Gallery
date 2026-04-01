@@ -1,6 +1,6 @@
 # 当前开发上下文
 
-> 最后更新：2026-03-31
+> 最后更新：2026-04-01
 > 当前焦点模块：前端展示层（Gallery 组件）
 
 ## 🎯 目标
@@ -30,6 +30,7 @@
 - [x] 基于目录结构的自动标签生成
 - [x] 构建产物生成（`public/photos.json`）
 - [x] R2 全托管模式 — 缩略图上传到 R2，本地仅保存 photos.json
+- [x] R2 增量构建 — 基于 ETag 检测原图变更，跳过未变更图片，同名替换会触发重新处理
 
 ### 前端页面
 - [x] 基础布局组件（Header, Footer）
@@ -68,6 +69,7 @@
 - Node/tsx 脚本不支持 `import.meta.env`，需用 `dotenv/config` 加载环境变量
 - R2 兼容性需配置 `requestChecksumCalculation` 和 `responseChecksumValidation`
 - `sharp.rotate()` 自动根据 EXIF Orientation 旋转，`getImageDimensions()` 需考虑旋转后尺寸
+- R2 中 `size=0` 的对象为目录标记，需在文件列表阶段过滤
 - GPS 数据展示需做模糊化处理以保护隐私
 - R2 构建默认忽略 `.thumbnails` 目录，可通过 `R2_IGNORE_DIRS` 环境变量追加其他忽略目录
 
