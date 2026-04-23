@@ -31,10 +31,22 @@
 - [x] 基础布局组件（Header, Footer）
 - [x] 博客功能（Astro Content Collections）
 - [x] 画廊数据源接入
-- [ ] **响应式瀑布流画廊** ← 当前进行中
-- [ ] ThumbHash 懒加载占位符
-- [ ] 图片详情/全屏查看器（PhotoSwipe 或 Astro View Transitions）
-- [ ] EXIF 信息展示面板
+- [x] 响应式瀑布流画廊（MasonicGallery）
+- [x] ThumbHash 懒加载占位符
+- [x] 图片详情/全屏查看器（PhotoViewer overlay）
+- [x] EXIF 信息展示面板
+
+### P0+ — Viewer Overlay 改造（对标 Afilmory）
+
+> 详细方案见 [PLAN-viewer-overlay.md](./plan/PLAN-viewer-overlay.md)
+
+- [ ] **`GalleryWithViewer.tsx`** — 新建状态容器，整合 gallery + viewer + URL 同步
+- [ ] **`MasonicGallery.tsx`** — `PhotoCard` 改用 `onClick` 回调替代 `<a>` 整页跳转
+- [ ] **`PhotoViewer.tsx`** — 新增胶片条组件，使用 `@tanstack/virtual` 虚拟化渲染，激活项自动居中滚动，优化视觉层级动效
+- [ ] **`PhotoViewer.tsx`** — 统一 `Photo` 类型（对齐 `photos.json` 实际字段 `thumbnail` 单数）
+- [ ] **`index.astro`** — 替换为 `GalleryWithViewer`
+- [ ] URL 同步：`history.pushState`/`replaceState` + `popstate` 监听，后退键正确关闭 viewer
+- [ ] 键盘焦点管理：viewer 开启时 focus trap，关闭时归还焦点
 
 ### P1 — 重要
 
