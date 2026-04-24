@@ -39,28 +39,65 @@
 ### P0+ — Viewer Overlay 改造（对标 Afilmory）
 
 > 详细方案见 [PLAN-viewer-overlay.md](./plan/PLAN-viewer-overlay.md)
+> 防坑指南见 [AFILMORY_LEARNINGS.md](./AFILMORY_LEARNINGS.md)
 
 - [ ] **`GalleryWithViewer.tsx`** — 新建状态容器，整合 gallery + viewer + URL 同步
+  - 💡 `setState` 先于 `history.pushState` 执行（时序关键，见 AFILMORY_LEARNINGS §1）
+  - 💡 `popstate` 监听器务必在 `useEffect` cleanup 中移除（不能用匿名函数）
+  - 💡 添加 `isMounted` 防御，防止 SSR/CSR hydration 不一致
+
 - [ ] **`MasonicGallery.tsx`** — `PhotoCard` 改用 `onClick` 回调替代 `<a>` 整页跳转
-- [ ] **`PhotoViewer.tsx`** — 新增胶片条组件，使用 `@tanstack/virtual` 虚拟化渲染，激活项自动居中滚动，优化视觉层级动效
+  - 💡 保留 `<a href>` 用于右键/中键在新标签打开，仅拦截左键点击
+  - 💡 onClick 触发时记录 `triggerRef`（触发元素），供 viewer 关闭时归还焦点
+
+- [ ] **`PhotoViewer.tsx`** — 新增胶片条，使用 `@tanstack/virtual` 虚拟化渲染
+  - 💡 超过 100 张必须虚拟化，否则 DOM 节点过多导致卡顿（见 AFILMORY_LEARNINGS §2）
+  - 💡 激活项居中：优先 `scrollIntoView({ inline: 'center' })`，iOS Safari 需手动计算 scrollLeft 兜底
+  - 💡 视觉层级：激活 `scale(1.15)`，相邻 `scale(1.05)`，其余 `opacity-50 grayscale(30%)`
+  - 💡 ThumbHash 批量解码放入 `requestIdleCallback`，避免阻塞主线程
+
+- [ ] **`PhotoViewer.tsx`** — 缩放 & 平移手势
+  - 💡 双击缩放中心为点击位置（非图片中心），见 AFILMORY_LEARNINGS §3
+  - 💡 缩放 <= 1 时自动 reset translate 到 (0, 0)
+  - 💡 iOS Safari 的 `touchmove` 需要 `{ passive: false }` 才能 `preventDefault`
+  - 💡 双击用 300ms 时间差判断，不依赖 `dblclick` 事件（iOS 不可靠）
+  - 💡 原图 `onError` 时回退到缩略图展示
+
 - [ ] **`PhotoViewer.tsx`** — 统一 `Photo` 类型（对齐 `photos.json` 实际字段 `thumbnail` 单数）
+
 - [ ] **`index.astro`** — 替换为 `GalleryWithViewer`
+
 - [ ] URL 同步：`history.pushState`/`replaceState` + `popstate` 监听，后退键正确关闭 viewer
-- [ ] 键盘焦点管理：viewer 开启时 focus trap，关闭时归还焦点
+
+- [ ] 键盘焦点管理：viewer 开启时 focus trap，关闭时归还焦点（用 `triggerRef` 记录触发元素）
 
 ### P1 — 重要
 
 - [ ] 标签系统（基于目录路径自动生成 `/tags/xxx`）
+  - 💡 根目录下无子目录的图片使用 `uncategorized` 作为默认 tag（见 AFILMORY_LEARNINGS §8）
+  - 💡 切换 tag 时给 masonic 组件加 `key={activeTag}`，强制重新计算布局
+  - 💡 分组 header 显示日期范围，如"2024年3月 · 12张"
+
 - [ ] 图片分享功能（Web Share API + OG meta）
+  - 💡 OG `og:image` 必须是绝对 URL（含 `https://`），R2 CDN URL 可直接使用（见 AFILMORY_LEARNINGS §9）
+  - 💡 OG meta 在 `[...slug].astro` 的 `<head>` 中设置（已有 SSG fallback 页面）
+
 - [ ] 暗色模式
+
 - [ ] 多尺寸缩略图支持（300w/800w/1600w）
 
 ### P2 — 锦上添花
 
 - [ ] 地图视图（Leaflet + EXIF GPS → GeoJSON）
+  - 💡 简化替代方案：直接生成高德/Google Maps 链接（`https://maps.amap.com/?q=lat,lng`），无需引入地图库
+  - 💡 GPS 展示前做坐标模糊化（精度降至小数点后 2 位）
+
 - [ ] HEIC/TIFF 前端预览支持
+
 - [ ] Live Photo 支持
+
 - [ ] GPS 数据模糊化（隐私保护）
+
 - [ ] AVIF 格式支持
 
 ### P3 — 探索性
@@ -78,11 +115,16 @@
 - [ ] R2 持久化缓存（构建产物回传 R2，解决 CI 缓存丢失）
 - [ ] Intersection Observer 预加载下一组图片
 - [ ] PWA 支持离线查看
+- [ ] 构建并行化（图片量 > 200 张时，用 Promise 并发控制替代串行处理，见 AFILMORY_LEARNINGS §10）
 
 ### 部署
 - [ ] Netlify 部署配置（netlify.toml）
 - [ ] CDN 缓存策略（图片/字体永久缓存，API 短期缓存）
 - [ ] Lighthouse 性能调优（目标 >90 分）
+
+### RSS & Sitemap
+- [ ] RSS Feed 生成（item pubDate 用拍摄时间，非构建时间）
+- [ ] Sitemap 生成（lastmod 用拍摄时间，非构建时间，见 AFILMORY_LEARNINGS §9）
 
 ## 技术栈
 
