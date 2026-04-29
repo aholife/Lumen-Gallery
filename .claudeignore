@@ -1,0 +1,11 @@
+# 忽略敏感配置
+.env
+config/secrets.json
+
+# 忽略日志和临时文件
+*.log
+temp/
+.cache/
+
+# 忽略整个 node_modules
+node_modules/
