@@ -1,21 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 import { Masonry } from 'masonic';
 import { thumbHashToRGBA } from 'thumbhash';
+import type { Photo } from '../types/photo';
 
-// ========== 类型定义 ==========
-interface Photo {
-  id: string;
-  key: string;
-  filename: string;
-  width: number;
-  height: number;
-  size: number;
-  format?: string;
-  thumbHash: string;
-  tags?: string[];
-  thumbnail: { url: string; width: number; height: number };
-}
-
+// ========== 导出类型 ==========
 export interface MasonryGalleryRef {
   reposition: () => void;
 }
@@ -24,18 +12,19 @@ interface MasonicGalleryProps {
   photos: Photo[];
   columnWidth?: number;
   columnGutter?: number;
-  onPhotoClick?: (photo: Photo) => void;
+  /** 点击图片时的回调（左键单击触发 overlay，不跳页） */
+  onPhotoClick?: (photo: Photo, index: number) => void;
 }
 
 // ========== ThumbHash 图片组件 ==========
+/** 带 ThumbHash 占位符的懒加载图片组件 */
 const ThumbHashImage: React.FC<{
   src: string;
   alt: string;
   width: number;
   height: number;
   thumbHash: string;
-  transitionName?: string;
-}> = ({ src, alt, width, height, thumbHash, transitionName }) => {
+}> = ({ src, alt, width, height, thumbHash }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
 
@@ -44,7 +33,7 @@ const ThumbHashImage: React.FC<{
     if (!canvas || !thumbHash) return;
 
     try {
-      // 将 Base64 字符串解码为 Uint8Array
+      // 将 Base64 ThumbHash 解码为 RGBA 像素数据
       const hash = Uint8Array.from(atob(thumbHash), c => c.charCodeAt(0));
       const { w, h, rgba } = thumbHashToRGBA(hash);
       const ctx = canvas.getContext('2d');
@@ -62,26 +51,28 @@ const ThumbHashImage: React.FC<{
 
   return (
     <div className="relative w-full overflow-hidden" style={{ aspectRatio: `${width}/${height}` }}>
+      {/* ThumbHash 占位符层 — 原图加载完成后淡出 */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
           ${status === 'loaded' ? 'opacity-0' : 'opacity-100'}`}
       />
 
+      {/* 实际缩略图层 */}
       {status !== 'error' && (
         <img
           src={src}
           alt={alt}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
             ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setStatus('loaded')}
           onError={() => setStatus('error')}
           loading="lazy"
           decoding="async"
-          style={transitionName ? { viewTransitionName: transitionName } as any : undefined}
         />
       )}
 
+      {/* 加载失败兜底 */}
       {status === 'error' && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 text-gray-500">
           <span>加载失败</span>
@@ -91,30 +82,53 @@ const ThumbHashImage: React.FC<{
   );
 };
 
-// ========== 照片卡片组件（使用 memo 优化） ==========
-const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
-  const formatBytes = (bytes: number, decimals = 1) => {
-    if (!bytes) return '0B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(decimals)}${sizes[i]}`;
-  };
+// ========== 工具函数 ==========
+const formatBytes = (bytes: number, decimals = 1) => {
+  if (!bytes) return '0B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(decimals)}${sizes[i]}`;
+};
 
-  const transitionName = `photo-${photo.id}`;
+// ========== 照片卡片组件 ==========
+/**
+ * 照片卡片 — 左键点击触发 onPhotoClick（打开 overlay），
+ * 保留 <a> 标签用于右键/中键在新标签打开。
+ */
+const PhotoCard = memo(({ data: photo, index, onPhotoClick }: {
+  data: Photo;
+  index: number;
+  onPhotoClick?: (photo: Photo, index: number) => void;
+}) => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // 左键点击 → 触发 overlay，阻止默认跳转
+    e.preventDefault();
+    onPhotoClick?.(photo, index);
+  }, [photo, index, onPhotoClick]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // 中键点击 → 允许浏览器默认行为（新标签打开）
+    if (e.button === 1) return;
+  }, []);
 
   return (
     <div className="w-full">
-      <a href={`/Gallery/${photo.key}`} className="block relative bg-white overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group rounded-lg">
+      {/* 外层 div 处理左键点击，内部 <a> 保留右键菜单 */}
+      <div
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        className="block relative bg-white overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group rounded-lg"
+      >
         <ThumbHashImage
           src={photo.thumbnail.url}
           alt={photo.filename}
           width={photo.thumbnail.width}
           height={photo.thumbnail.height}
           thumbHash={photo.thumbHash}
-          transitionName={transitionName}
         />
 
+        {/* 悬浮信息层 */}
         <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="flex flex-wrap gap-2 mb-2">
             {(photo.tags?.length ? photo.tags : ['无标签']).map((tag) => (
@@ -132,7 +146,16 @@ const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
             <span>{formatBytes(photo.size)}</span>
           </div>
         </div>
-      </a>
+
+        {/* 隐藏的 <a> 标签 — 仅用于右键/中键"在新标签中打开" */}
+        <a
+          href={`/Gallery/${photo.key}`}
+          className="absolute inset-0"
+          onClick={(e) => e.preventDefault()}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      </div>
     </div>
   );
 });
@@ -140,8 +163,12 @@ const PhotoCard = memo(({ data: photo }: { data: Photo }) => {
 PhotoCard.displayName = 'PhotoCard';
 
 // ========== 主组件 ==========
+/**
+ * Masonic 瀑布流画廊组件
+ * 使用 masonic 库实现高性能瀑布流布局，支持 SSR 骨架屏。
+ */
 const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
-  ({ photos, columnWidth = 300, columnGutter = 10 }, ref) => {
+  ({ photos, columnWidth = 300, columnGutter = 10, onPhotoClick }, ref) => {
     const [positionIndex, setPositionIndex] = useState(0);
     const itemCounter = useRef(photos.length);
 
@@ -163,6 +190,12 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
       setIsMounted(true);
     }, []);
 
+    // 将 onPhotoClick 注入到 PhotoCard 的 render 函数中
+    // 必须在条件返回之前声明，保证 hooks 调用顺序一致
+    const renderCard = useCallback((props: any) => {
+      return <PhotoCard {...props} onPhotoClick={onPhotoClick} />;
+    }, [onPhotoClick]);
+
     if (!isMounted) {
       // SSR 占位，避免水合不匹配
       return (
@@ -183,7 +216,7 @@ const MasonicGallery = forwardRef<MasonryGalleryRef, MasonicGalleryProps>(
         <Masonry
           key={shrunk ? `shrunk-${Date.now()}` : `normal-${positionIndex}`}
           items={photos}
-          render={PhotoCard}
+          render={renderCard}
           columnGutter={columnGutter}
           columnWidth={columnWidth}
           overscanBy={5}

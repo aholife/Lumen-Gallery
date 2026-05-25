@@ -28,3 +28,4 @@ pnpm-debug.log*
 .idea/
 pnpm-lock.yaml
 public/photos.json
+.specstory
