@@ -1,6 +1,7 @@
-# Lumen Gallery 项目总结与框架建议
+# Lumen Gallery 项目总结
 
-> 创建时间：2026-04-28  
+> 创建时间：2026-04-28
+> 最后更新：2026-05-25
 > 基于 docs 目录文档分析
 
 ---
@@ -17,15 +18,15 @@
 ## 🎯 核心功能需求
 
 ### P0 — 必须完成（MVP）
-- ✅ 响应式瀑布流画廊（Masonry Layout）
-- ✅ 图片处理流水线（格式转换、缩略图生成、EXIF 提取、ThumbHash 占位符）
-- ✅ R2 全托管存储（原图 + 缩略图）
-- ✅ 增量构建（基于 ETag 检测变更）
-- 🔄 **Viewer Overlay 改造**（当前重点）
-  - 不刷新页面的图片查看体验
-  - URL 同步（可分享直链）
-  - 胶片条虚拟化渲染
-  - 键盘/手势交互
+-  响应式瀑布流画廊（Masonry Layout）
+-  图片处理流水线（格式转换、缩略图生成、EXIF 提取、ThumbHash 占位符）
+-  R2 全托管存储（原图 + 缩略图）
+-  增量构建（基于 ETag 检测变更）
+- ✅ **Viewer Overlay 改造**（已完成 2026-05-25）
+  - 不刷新页面的图片查看体验（`GalleryWithViewer` 状态容器）
+  - URL 同步（`history.pushState` + `popstate`，可分享直链）
+  - 胶片条虚拟化渲染（`@tanstack/virtual`）
+  - 键盘/手势交互（滚轮/双击/双指缩放、拖拽平移）
 
 ### P1 — 重要功能
 - 标签系统（基于目录结构自动生成）
@@ -66,23 +67,21 @@ R2 Bucket/
 ### 前端架构
 - **Astro SSG**: 静态页面生成，SEO 友好
 - **React Islands**: 复杂交互组件（`client:only="react"`）
-  - `MasonicGallery.tsx` — 瀑布流画廊
-  - `PhotoViewer.tsx` — 图片查看器
-  - `GalleryWithViewer.tsx` — 状态容器（待实现）
+  - `GalleryWithViewer.tsx` — 状态容器 + URL 同步
+  - `MasonicGallery.tsx` — 瀑布流画廊（onClick 回调模式）
+  - `PhotoViewer.tsx` — 图片查看器（胶片条 + 缩放 + 键盘导航）
 
 ---
 
-## ⚠️ 当前架构的痛点
+## ⚠️ 当前架构的已知约束
 
-### 1. SSR/CSR Hydration 复杂性
-- Astro Islands 需要 `client:only="react"` 避免 hydration 不一致
-- 需要额外的 `isMounted` 防御逻辑
-- React 状态管理跨 island 困难
+### 1. SSR/CSR Hydration 复杂性（已解决）
+- Astro Islands 使用 `client:only="react"` 避免 hydration 不一致
+- `isMounted` 防御逻辑已在 `GalleryWithViewer` 中处理
 
-### 2. URL 同步与状态管理
-- Viewer + Gallery + URL 三方状态耦合
-- `history.pushState` 与 React 状态时序敏感
-- 需要手动管理 `popstate` 监听器清理
+### 2. URL 同步与状态管理（已解决）
+- `GalleryWithViewer` 通过 `history.pushState` + `popstate` 实现 URL 同步
+- 时序：`setState` 先于 `pushState` 执行，避免竞争
 
 ### 3. 图片处理流程分离
 - 构建脚本与前端分离，需要手动运行
@@ -185,7 +184,9 @@ app/
 
 ---
 
-## 🔄 迁移方案
+## 🔄 Next.js 迁移方案（仅供参考，当前不迁移）
+
+> Viewer Overlay 已在 Astro 下成功实现，以下方案仅作为未来参考。
 
 ### 阶段 1：基础迁移（1-2 天）
 1. 初始化 Next.js 14 项目（App Router）
@@ -228,23 +229,21 @@ app/
 
 ---
 
-## 🎯 推荐决策
+## 🎯 框架决策
 
-### ✅ 推荐：迁移到 Next.js 14
+### ✅ 结论：继续使用 Astro + React Islands
 
-**理由**:
-1. 项目核心是**交互式照片画廊**，React 占比 > 70%，Astro 的静态生成优势未充分利用
-2. Viewer Overlay 改造需要复杂的状态管理，Next.js 更适合
-3. 未来需要用户上传功能，Next.js 的 API Routes 更方便
-4. `next/image` 可大幅简化图片处理流程
-5. 更好的开发体验和社区支持
+Viewer Overlay 改造已成功在 Astro 架构下实现，验证了以下方案的可行性：
+- `client:only="react"` island 模式足以支撑复杂交互
+- `history.pushState` + `popstate` 实现 URL 同步，无需路由库
+- `[...slug].astro` SSG 页面保留直链/SEO 兜底
+- 状态复杂度可控，暂不需要 Zustand
 
-### ⚠️ 保留 Astro 的场景
-如果项目满足以下条件，可以继续使用 Astro：
-- 纯静态展示，无复杂交互
-- 不需要用户上传功能
-- 构建脚本可以接受
-- 团队熟悉 Astro 生态
+### 未来迁移 Next.js 的触发条件
+如果未来出现以下需求，可重新评估迁移：
+- 需要用户上传功能（API Routes 更方便）
+- 需要 React Server Components 优化首屏性能
+- 团队规模扩大，需要统一的全栈框架
 
 ---
 
@@ -336,10 +335,10 @@ export async function uploadPhoto(formData: FormData) {
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
-| **框架** | Next.js 14 App Router | 更适合交互式应用，原生 React 支持 |
-| **图片优化** | next/image + Sharp | 内置优化 + 自定义处理 |
-| **状态管理** | Zustand | 轻量、简单、TypeScript 友好 |
-| **Viewer 实现** | Parallel Routes | 原生 Modal Overlay 支持 |
+| **框架** | Astro + React Islands | Viewer Overlay 已验证可行，静态生成 + 交互 island 模式 |
+| **图片优化** | Sharp 自定义流程 | R2 全托管模式，构建时生成缩略图 |
+| **状态管理** | useState + history API | 当前复杂度可控，暂不引入 Zustand |
+| **Viewer 实现** | Overlay + URL 同步 | `GalleryWithViewer` 状态容器 + `history.pushState` |
 | **存储** | Cloudflare R2（保持不变） | 零出口流量费，S3 兼容 |
 | **占位符** | ThumbHash（保持不变） | 体积小、质量高 |
 | **缩略图格式** | WebP（保持不变） | 高效压缩 |

@@ -69,12 +69,12 @@ pnpm process-images
 ```
 
 这将：
-- ✅ 转换 HEIC/TIFF 为 JPEG
-- ✅ 生成 300px、800px、1600px 三种尺寸缩略图
-- ✅ 提取完整 EXIF 信息
-- ✅ 生成 Blurhash 占位符
-- ✅ 从目录结构提取标签
-- ✅ 输出元数据到 `public/photos.json`
+-  转换 HEIC/TIFF 为 JPEG
+-  生成 300px、800px、1600px 三种尺寸缩略图
+-  提取完整 EXIF 信息
+-  生成 Blurhash 占位符
+-  从目录结构提取标签
+-  输出元数据到 `public/photos.json`
 
 ### 启动开发服务器
 
@@ -157,7 +157,7 @@ pnpm build
 
 ## 📋 开发计划
 
-### ✅ 第一阶段：基础设施（已完成）
+###  第一阶段：基础设施（已完成）
 - [x] 项目骨架搭建（Astro + TypeScript）
 - [x] 存储抽象层（Local/R2/GitHub）
 - [x] 图片处理流水线（Sharp + Exifr + Blurhash）
@@ -237,29 +237,29 @@ interface Storage {
 ## 🔧 已完成的配置
 
 ### 存储系统
-- ✅ 本地文件系统存储（`src/lib/storage/local.ts`）
-- ✅ Cloudflare R2 对象存储（`src/lib/storage/r2.ts`）
-- ✅ GitHub 仓库存储（`src/lib/storage/github.ts`）
-- ✅ 统一的存储接口抽象
+- 本地文件系统存储（`src/lib/storage/local.ts`）
+- Cloudflare R2 对象存储（`src/lib/storage/r2.ts`）
+- GitHub 仓库存储（`src/lib/storage/github.ts`）
+- 统一的存储接口抽象
 
 ### 图片处理
-- ✅ HEIC/TIFF 格式自动转换
-- ✅ 多尺寸缩略图生成（300/800/1600px）
-- ✅ EXIF 信息完整提取
-- ✅ Blurhash 占位符生成
-- ✅ 基于目录的自动标签提取
-- ✅ 元数据 JSON 输出
+- HEIC/TIFF 格式自动转换
+- 多尺寸缩略图生成（300/800/1600px）
+- EXIF 信息完整提取
+- Blurhash 占位符生成
+- 基于目录的自动标签提取
+- 元数据 JSON 输出
 
 ### 页面和组件
-- ✅ 照片画廊页面（`src/pages/gallery.astro`）
-- ✅ 响应式网格布局
-- ✅ 无照片时的引导界面
-- ✅ 基础博客功能
+- 照片画廊页面（`src/pages/gallery.astro`）
+- 响应式网格布局
+- 无照片时的引导界面
+- 基础博客功能
 
 ### 构建脚本
-- ✅ 图片批量处理脚本（`scripts/build-images.ts`）
-- ✅ npm 命令集成
-- ✅ 增量构建支持
+- 图片批量处理脚本（`scripts/build-images.ts`）
+- npm 命令集成
+- 增量构建支持
 
 ## 🤝 贡献
 

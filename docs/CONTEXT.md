@@ -1,11 +1,11 @@
 # 当前开发上下文
 
-> 最后更新：2026-04-24
-> 当前焦点模块：前端展示层（GalleryWithViewer Overlay 改造）
+> 最后更新：2026-05-25
+> 当前焦点模块：第三阶段 P1 功能开发（标签系统 / 分享 / 暗色模式）
 
 ## 🎯 目标
 
-完成 Viewer Overlay 改造（P0+），实现不刷新页面的图片查看体验，对标 Afilmory，达到 MVP 可部署状态。
+Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签系统、图片分享、暗色模式、多尺寸缩略图）。
 
 ## 📌 项目概况
 
@@ -13,7 +13,7 @@
 - **核心技术**: Astro + TypeScript + Tailwind CSS + React（复杂交互组件）
 - **存储方案**: Cloudflare R2（主要）/ Local / GitHub（可切换）
 - **图片处理**: Sharp（格式转换/缩略图）+ exifr（EXIF）+ thumbhash（占位符）
-- **当前阶段**: Viewer Overlay 改造中（详见 [PLAN-viewer-overlay.md](./plan/PLAN-viewer-overlay.md)）
+- **当前阶段**: Viewer Overlay 已完成，进入 P1 功能开发
 
 ## ✅ 已完成
 
@@ -40,14 +40,15 @@
 - [x] ThumbHash 懒加载占位符
 - [x] 图片详情/全屏查看器（PhotoViewer overlay）
 - [x] EXIF 信息展示面板
-
-## 🕒 进行中
-
-- [ ] **Viewer Overlay 改造** — `GalleryWithViewer.tsx`
-  - PhotoCard 改用 onClick 替代整页跳转
+- [x] **Viewer Overlay 改造** — `GalleryWithViewer.tsx`
+  - PhotoCard 改用 onClick 回调，保留右键新标签打开
   - URL 同步（`history.pushState` + `popstate` 监听）
   - 胶片条虚拟化渲染（`@tanstack/virtual`）
-  - 键盘焦点管理（Focus Trap）
+  - 键盘导航（←/→/Esc/i）、焦点归还
+  - 缩放手势（滚轮/双击/双指捏合）、拖拽平移
+  - 原图加载失败自动降级到缩略图
+  - 共享 Photo 类型（`src/types/photo.ts`）
+  - 删除冗余 `BlurHashImage.astro`
 
 ## ⏳ 待办（Next）
 
@@ -67,7 +68,7 @@
 | 缩略图策略 | 单张 800w | 简化流程，满足当前需求 |
 | WebGL 渲染 | 暂不使用 | 增加 200KB+ JS，收益不明显 |
 | 全屏查看转场 | Overlay + URL 同步 | 不跳页，体验更好；直链 fallback 保留 SEO |
-| 状态管理 | Zustand（viewer 复杂后引入） | 避免 viewer+gallery+URL 三方状态 prop drilling |
+| 状态管理 | useState + history API | 当前复杂度可控，暂不引入 Zustand |
 
 ## 📌 注意事项
 
@@ -99,10 +100,11 @@
 | `src/lib/image/` | 图片处理（EXIF/缩略图/ThumbHash） |
 | `scripts/build-images-r2.ts` | R2 模式构建脚本 |
 | `scripts/build-images.ts` | 本地模式构建脚本 |
-| `src/components/GalleryWithViewer.tsx` | Viewer Overlay 状态容器（待新建） |
-| `src/components/MasonicGallery.tsx` | 瀑布流画廊组件 |
-| `src/components/PhotoViewer.tsx` | 图片查看器（含胶片条，待改造） |
-| `src/pages/index.astro` | 首页（待替换为 GalleryWithViewer） |
+| `src/types/photo.ts` | 共享 Photo 类型定义（对齐 photos.json） |
+| `src/components/GalleryWithViewer.tsx` | Viewer Overlay 状态容器 + URL 同步 |
+| `src/components/MasonicGallery.tsx` | 瀑布流画廊组件（onClick 回调模式） |
+| `src/components/PhotoViewer.tsx` | 图片查看器（胶片条 + 缩放 + 键盘导航） |
+| `src/pages/index.astro` | 首页（使用 GalleryWithViewer） |
 | `src/pages/Gallery/[...slug].astro` | 画廊 fallback 页面（直链/SEO 兜底） |
 | `public/photos.json` | 构建产物 — 图片元数据清单 |
 | `docs/AFILMORY_LEARNINGS.md` | Afilmory 参考手册（防坑指南） |

@@ -5,7 +5,7 @@
 
 ---
 
-## 第一阶段：基础设施搭建 ✅
+## 第一阶段：基础设施搭建 
 
 - [x] Astro + TypeScript + Tailwind CSS 初始化
 - [x] 目录结构设计
@@ -13,7 +13,7 @@
 - [x] 环境变量配置（.env + dotenv 兼容）
 - [x] R2 S3 兼容配置（checksumCalculation 兼容性修复）
 
-## 第二阶段：图像处理流水线 ✅
+## 第二阶段：图像处理流水线 
 
 - [x] 扫描存储源中的图片
 - [x] Sharp 格式转换（HEIC/TIFF → JPEG）
@@ -41,35 +41,28 @@
 > 详细方案见 [PLAN-viewer-overlay.md](./plan/PLAN-viewer-overlay.md)
 > 防坑指南见 [AFILMORY_LEARNINGS.md](./AFILMORY_LEARNINGS.md)
 
-- [ ] **`GalleryWithViewer.tsx`** — 新建状态容器，整合 gallery + viewer + URL 同步
-  - 💡 `setState` 先于 `history.pushState` 执行（时序关键，见 AFILMORY_LEARNINGS §1）
-  - 💡 `popstate` 监听器务必在 `useEffect` cleanup 中移除（不能用匿名函数）
-  - 💡 添加 `isMounted` 防御，防止 SSR/CSR hydration 不一致
-
-- [ ] **`MasonicGallery.tsx`** — `PhotoCard` 改用 `onClick` 回调替代 `<a>` 整页跳转
-  - 💡 保留 `<a href>` 用于右键/中键在新标签打开，仅拦截左键点击
-  - 💡 onClick 触发时记录 `triggerRef`（触发元素），供 viewer 关闭时归还焦点
-
-- [ ] **`PhotoViewer.tsx`** — 新增胶片条，使用 `@tanstack/virtual` 虚拟化渲染
-  - 💡 超过 100 张必须虚拟化，否则 DOM 节点过多导致卡顿（见 AFILMORY_LEARNINGS §2）
-  - 💡 激活项居中：优先 `scrollIntoView({ inline: 'center' })`，iOS Safari 需手动计算 scrollLeft 兜底
-  - 💡 视觉层级：激活 `scale(1.15)`，相邻 `scale(1.05)`，其余 `opacity-50 grayscale(30%)`
-  - 💡 ThumbHash 批量解码放入 `requestIdleCallback`，避免阻塞主线程
-
-- [ ] **`PhotoViewer.tsx`** — 缩放 & 平移手势
-  - 💡 双击缩放中心为点击位置（非图片中心），见 AFILMORY_LEARNINGS §3
-  - 💡 缩放 <= 1 时自动 reset translate 到 (0, 0)
-  - 💡 iOS Safari 的 `touchmove` 需要 `{ passive: false }` 才能 `preventDefault`
-  - 💡 双击用 300ms 时间差判断，不依赖 `dblclick` 事件（iOS 不可靠）
-  - 💡 原图 `onError` 时回退到缩略图展示
-
-- [ ] **`PhotoViewer.tsx`** — 统一 `Photo` 类型（对齐 `photos.json` 实际字段 `thumbnail` 单数）
-
-- [ ] **`index.astro`** — 替换为 `GalleryWithViewer`
-
-- [ ] URL 同步：`history.pushState`/`replaceState` + `popstate` 监听，后退键正确关闭 viewer
-
-- [ ] 键盘焦点管理：viewer 开启时 focus trap，关闭时归还焦点（用 `triggerRef` 记录触发元素）
+- [x] **共享类型 `src/types/photo.ts`** — 统一 `Photo` 类型，对齐 `photos.json` 实际字段（`thumbnail` 单数、`thumbHash` camelCase）
+- [x] **`GalleryWithViewer.tsx`** — 新建状态容器，整合 gallery + viewer + URL 同步
+  -  `setState` 先于 `history.pushState` 执行（时序正确）
+  -  `popstate` 监听器在 `useEffect` cleanup 中移除
+  -  `isMounted` 防御，防止 SSR/CSR hydration 不一致
+- [x] **`MasonicGallery.tsx`** — `PhotoCard` 改用 `onClick` 回调替代 `<a>` 整页跳转
+  -  保留隐藏 `<a href>` 用于右键/中键在新标签打开
+  -  onClick 触发时记录 `triggerRef`（触发元素），关闭时归还焦点
+- [x] **`PhotoViewer.tsx`** — 新增胶片条，使用 `@tanstack/virtual` 虚拟化渲染
+  -  虚拟化渲染，100+ 张照片仍流畅
+  -  激活项自动居中滚动（`virtualizer.scrollToIndex`）
+  -  视觉层级：激活 `scale(1.15)`，相邻 `scale(1.05)`，其余 `opacity-50 grayscale(30%)`
+- [x] **`PhotoViewer.tsx`** — 缩放 & 平移手势
+  -  滚轮缩放（以鼠标位置为中心）
+  -  双击缩放（以点击位置为中心，300ms 时间差判断）
+  -  双指捏合缩放
+  -  缩放 <= 1 时自动 reset translate 到 (0, 0)
+  -  原图 `onError` 时回退到缩略图展示
+- [x] **`index.astro`** — 替换为 `GalleryWithViewer`，清理 ~200 行未使用 CSS
+- [x] URL 同步：`history.pushState`/`replaceState` + `popstate` 监听，后退键正确关闭 viewer
+- [x] 键盘焦点管理：关闭时归还焦点（用 `triggerRef` 记录触发元素）
+- [x] **删除 `BlurHashImage.astro`** — 未被任何文件引用的冗余组件
 
 ### P1 — 重要
 
@@ -110,7 +103,7 @@
 ## 第四阶段：优化与部署
 
 ### 性能优化
-- [ ] 虚拟滚动（@tanstack/virtual）
+- [x] 虚拟滚动 — 胶片条已使用 `@tanstack/virtual` 实现虚拟化渲染
 - [x] 构建增量缓存（基于 R2 ETag 内容哈希检测文件变更，跳过未变更图片）
 - [ ] R2 持久化缓存（构建产物回传 R2，解决 CI 缓存丢失）
 - [ ] Intersection Observer 预加载下一组图片

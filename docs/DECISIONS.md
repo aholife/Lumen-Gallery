@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-05-25：Viewer Overlay 实现方案
+
+### 背景
+需要实现不刷新页面的图片查看体验（overlay 模式），对标 Afilmory。
+
+### 考虑选项
+- **A. 迁移 Next.js** — 使用 Parallel Routes 实现 Modal Overlay
+- **B. Astro + React Islands** — 在现有架构下用 `history.pushState` + `useState` 实现
+
+### 决定
+选择 **B. Astro + React Islands**。
+
+### 理由
+- Viewer Overlay 的状态复杂度可控（`currentIndex: number | null`），不需要 Zustand
+- `history.pushState` + `popstate` 事件足以实现 URL 同步
+- `[...slug].astro` SSG 页面保留直链/SEO 兜底
+- 避免框架迁移带来的成本和风险
+- `@tanstack/virtual` 解决胶片条性能问题
+
+### 关键实现
+- `GalleryWithViewer.tsx`：状态容器，管理 viewer 开关 + URL 同步
+- `MasonicGallery.tsx`：PhotoCard 改用 `onClick` 回调，保留 `<a>` 用于右键新标签
+- `PhotoViewer.tsx`：虚拟化胶片条 + 缩放手势 + 键盘导航
+- `src/types/photo.ts`：共享类型，对齐 `photos.json`
+
+### 后果
+- ✅ 无需框架迁移，保持 Astro SSG 的性能优势
+- ✅ 直链 fallback 保留 SEO
+- ⚠️ 需手动管理 `popstate` 监听器清理和 hooks 调用顺序
+
+---
+
 ## 2026-02-11：ThumbHash 替代 BlurHash
 
 ### 背景
@@ -24,7 +56,7 @@
 - 编解码性能相当
 
 ### 后果
-- ✅ 更好的用户体验
+-  更好的用户体验
 - ⚠️ 需更新前端解码逻辑（`thumbHashToRGBA`）
 - 受影响：`processor.ts`, `types.ts`, `MasonicGallery.tsx`, `BlurHashImage.astro`
 
@@ -61,8 +93,8 @@ R2 Bucket/
 ```
 
 ### 后果
-- ✅ 仓库轻量，只有 photos.json
-- ✅ 充分利用 Cloudflare CDN
+-  仓库轻量，只有 photos.json
+-  充分利用 Cloudflare CDN
 - ⚠️ 需配置 R2 兼容性参数（checksumCalculation）
 - ⚠️ 构建时需网络访问 R2
 
@@ -88,8 +120,8 @@ R2 Bucket/
 - 未来可通过 `<picture>` 标签添加 AVIF 降级
 
 ### 后果
-- ✅ 更小的文件体积，更快的加载速度
-- ✅ 实现简单
+-  更小的文件体积，更快的加载速度
+-  实现简单
 
 ---
 
@@ -112,7 +144,7 @@ MVP 阶段选择 **B. 单张 800w**。
 - 多尺寸可在 P1 阶段按需添加
 
 ### 后果
-- ✅ 构建速度快，存储成本低
+-  构建速度快，存储成本低
 - ⚠️ 大屏/Retina 可能略显模糊
 - ⚠️ 小屏加载略有浪费
 
@@ -159,7 +191,7 @@ MVP 阶段选择 **B. 单张 800w**。
 ```
 
 ### 后果
-- ✅ 极简实现，体验优秀
+-  极简实现，体验优秀
 - ⚠️ 手势缩放等高级功能仍需 PhotoSwipe 补充
 
 ---
@@ -177,5 +209,5 @@ Astro/Vite 在构建时注入 `import.meta.env`，但 tsx 直接执行的 Node �
 - dotenv 是轻量 devDependency，无运行时负担
 
 ### 后果
-- ✅ 统一的环境变量访问方式
+-  统一的环境变量访问方式
 - ⚠️ 脚本入口需记得 import dotenv

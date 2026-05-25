@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-05-25 — Viewer Overlay 改造完成
+
+**目标**：实现不刷新页面的图片查看体验，对标 Afilmory。
+
+**主要变更**：
+
+1. **新建 `src/types/photo.ts`** — 共享 Photo 类型，对齐 `photos.json` 实际字段（`thumbnail` 单数、`thumbHash` camelCase、`exif` 小写驼峰）。消除了 `PhotoViewer.tsx` 中旧的 `thumbnails`/`Original`/`blurhash` 不一致问题。
+
+2. **新建 `src/components/GalleryWithViewer.tsx`** — 状态容器组件：
+   - 管理 `currentIndex: number | null` 状态（null = viewer 关闭）
+   - URL 同步：`history.pushState` 在 `setState` 之后执行（避免 popstate 竞争）
+   - `popstate` 监听器在 `useEffect` cleanup 中移除
+   - `isMounted` 防御 SSR/CSR hydration 不一致
+   - `triggerRef` 记录触发元素，关闭时归还焦点
+
+3. **重写 `src/components/MasonicGallery.tsx`**：
+   - `PhotoCard` 改用 `onClick` 回调替代 `<a>` 整页跳转
+   - 保留隐藏 `<a>` 标签用于右键/中键"在新标签中打开"
+   - 使用共享 Photo 类型
+   - 修复 hooks 调用顺序 bug（`useCallback` 必须在条件返回之前）
+
+4. **重写 `src/components/PhotoViewer.tsx`**：
+   - 胶片条使用 `@tanstack/react-virtual` 虚拟化渲染（100+ 张仍流畅）
+   - 缩放：滚轮缩放（以鼠标位置为中心）、双击缩放（以点击位置为中心，300ms 判断）、双指捏合
+   - 平移：放大后拖拽平移，缩放 <= 1 自动归位
+   - 原图降级：`onError` 回退到缩略图
+   - 键盘：←/→ 切换、Esc 关闭、i 切换侧边栏
+   - 内联 CSS 样式，无外部依赖
+
+5. **更新 `src/pages/index.astro`** — 替换为 `GalleryWithViewer`，清理 ~200 行未使用的旧 CSS
+
+6. **删除 `src/components/BlurHashImage.astro`** — 未被任何文件引用
+
+7. **新增依赖** `@tanstack/react-virtual`
+
+**受影响文件**：
+- `src/types/photo.ts`（新建）
+- `src/components/GalleryWithViewer.tsx`（新建）
+- `src/components/MasonicGallery.tsx`（重写）
+- `src/components/PhotoViewer.tsx`（重写）
+- `src/pages/index.astro`（修改）
+- `src/components/BlurHashImage.astro`（删除）
+- `package.json`（新增依赖）
+
+---
+
 ## 2026-04-01 — R2 构建空目录报错修复 & 增量构建（跳过已处理图片）
 
 **问题 1**: 运行 `process-images:r2` 时，R2 存储桶中的空目录标记（size=0）或非图片文件会被传入 Sharp，导致 `Input Buffer is empty` 错误。

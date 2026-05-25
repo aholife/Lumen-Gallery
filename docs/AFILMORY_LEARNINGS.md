@@ -32,7 +32,7 @@
 `history.pushState` 必须发生在 `setState` **之后**，否则 React 状态与 URL 之间产生竞争条件：`popstate` 事件触发时 React 状态尚未更新，导致 viewer 无法正确打开/关闭。
 
 ```tsx
-// ✅ 正确顺序
+//  正确顺序
 const openViewer = (photo: Photo, index: number) => {
   setCurrentIndex(index)                              // 1. 先更新 React 状态
   history.pushState({}, '', '/Gallery/' + photo.key) // 2. 再写入 URL
@@ -276,7 +276,7 @@ ThumbHash 解码是同步计算，批量解码时会阻塞主线程：
 // ❌ 不要在渲染时同步批量解码
 const decoded = photos.map(p => thumbHashToRGBA(p.thumbHash))
 
-// ✅ 用 requestIdleCallback 分批解码
+//  用 requestIdleCallback 分批解码
 useEffect(() => {
   const queue = [...photos]
   const processNext = (deadline: IdleDeadline) => {
@@ -311,7 +311,7 @@ const [src, setSrc] = useState(photo.url)  // 原图 URL
 Afilmory 踩过的最典型坑：组件卸载后事件监听器未清理，导致内存泄漏和重复触发。
 
 ```tsx
-// ✅ 所有 addEventListener 必须在 cleanup 中移除
+//  所有 addEventListener 必须在 cleanup 中移除
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') closeViewer()
@@ -345,7 +345,7 @@ useEffect(() => {
 EXIF 的 `DateTimeOriginal` 格式为 `YYYY:MM:DD HH:mm:ss`，**不含时区信息**。
 
 ```ts
-// ✅ 正确：配合 OffsetTimeOriginal 处理
+//  正确：配合 OffsetTimeOriginal 处理
 function parseExifDate(dateTimeOriginal: string, offsetTimeOriginal?: string) {
   // 格式：'2024:03:15 14:30:00'
   const normalized = dateTimeOriginal.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')
@@ -356,7 +356,7 @@ function parseExifDate(dateTimeOriginal: string, offsetTimeOriginal?: string) {
   }
 
   // ❌ 不要用 new Date(normalized)，会被解析为 UTC 导致时间偏差
-  // ✅ 按相机本地时间展示，不强制换算 UTC
+  //  按相机本地时间展示，不强制换算 UTC
   return new Date(normalized.replace(' ', 'T'))
 }
 ```
@@ -632,35 +632,35 @@ return isMobile
 以下是 Afilmory 开发过程中踩过、且与 Lumen Gallery 高度相关的坑，开发时按此检查：
 
 ```
-✅ 基础
+ 基础
 □ 所有 addEventListener 必须在 useEffect cleanup 中 removeEventListener
 □ useEffect cleanup 中的函数引用要与添加时一致（不能用匿名函数）
 □ history.pushState 在 setState 之后执行，不要颠倒顺序
 □ GalleryWithViewer 添加 isMounted 防御，避免 SSR/CSR hydration 不一致
 
-✅ 图片处理
+ 图片处理
 □ EXIF Orientation 5-8（竖拍）：photos.json 中 width/height 需要互换
 □ sharp.rotate() 后再读 metadata，获取旋转后的实际尺寸
 □ DateTimeOriginal 配合 OffsetTimeOriginal 处理时区；缺失时按本地时间展示，不换算 UTC
 □ 原图加载失败时，onError 回退到缩略图展示
 
-✅ 性能
+ 性能
 □ 胶片条超过 100 张必须用 @tanstack/virtual 虚拟化，不能全量渲染
 □ ThumbHash 批量解码放入 requestIdleCallback，避免阻塞主线程
 □ masonic 切换 tag 时给组件加 key={activeTag}，强制重新计算布局
 
-✅ 手势交互
+ 手势交互
 □ Pinch-zoom 与 Swipe 手势互斥处理（scale > 1 时禁用 swipe）
 □ touch 事件需要 passive: false 才能在 iOS Safari 中 preventDefault
 □ 双击缩放中心为点击位置，不是图片中心
 □ 缩放比例 <= 1 时自动 reset translate 到 (0, 0)
 
-✅ iOS Safari 专项
+ iOS Safari 专项
 □ touchmove 阻止需显式声明 { passive: false }
 □ 双击事件用 300ms 时间差判断，不要依赖 dblclick 事件（iOS 不可靠）
 □ 如果用 Canvas 渲染：宽高乘以 devicePixelRatio，绘制上下文 scale(dpr, dpr)
 
-✅ URL & 导航
+ URL & 导航
 □ OG 图片 URL 必须是绝对路径（含 https://）
 □ Sitemap lastmod 用照片拍摄时间，不用构建时间
 □ popstate 监听处理浏览器前进（不只是后退）
