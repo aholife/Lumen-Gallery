@@ -127,7 +127,7 @@ const lastUpdate =
         </div>
         <div class="meta-item">
             <span class="meta-label">标签</span>
-            <a href="/tags/" class="value link">浏览标签</a>
+            <a href="/tags/" class="meta-value link">浏览标签</a>
         </div>
     </div>
 </aside>
@@ -257,5 +257,12 @@ const lastUpdate =
     .meta-value {
         font-weight: 700;
         color: #191919;
+    }
+
+    .meta-value.link {
+        text-decoration: none;
+    }
+    .meta-value.link:hover {
+        text-decoration: underline;
     }
 </style>
