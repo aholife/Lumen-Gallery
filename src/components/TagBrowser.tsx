@@ -57,6 +57,13 @@ const TagBrowser: React.FC<TagBrowserProps> = ({
     });
   }, [photos, selectedTags, deferredQuery, matchSearch]);
 
+  // ========== 筛选变化时修正 viewer 索引 ==========
+  useEffect(() => {
+    if (currentIndex !== null && currentIndex >= filteredPhotos.length) {
+      setCurrentIndex(filteredPhotos.length > 0 ? filteredPhotos.length - 1 : null);
+    }
+  }, [filteredPhotos.length, currentIndex]);
+
   // ========== 标签切换 ==========
   const toggleTag = useCallback((tag: string) => {
     setSelectedTags(prev =>
