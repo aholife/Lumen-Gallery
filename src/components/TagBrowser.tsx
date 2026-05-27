@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import MasonicGallery from './MasonicGallery';
 import PhotoViewer from './PhotoViewer';
 import type { Photo } from '../types/photo';
@@ -15,6 +15,7 @@ const TagBrowser: React.FC<TagBrowserProps> = ({
   columnWidth = 240,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredQuery = useDeferredValue(searchQuery);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -48,13 +49,13 @@ const TagBrowser: React.FC<TagBrowserProps> = ({
         selectedTags.some(tag => photo.tags?.includes(tag));
 
       // 搜索筛选：无输入 → 全部通过；有输入 → 匹配
-      const searchMatch = !searchQuery ||
-        matchSearch(photo, searchQuery);
+      const searchMatch = !deferredQuery ||
+        matchSearch(photo, deferredQuery);
 
       // 两个条件取交集（AND）
       return tagMatch && searchMatch;
     });
-  }, [photos, selectedTags, searchQuery, matchSearch]);
+  }, [photos, selectedTags, deferredQuery, matchSearch]);
 
   // ========== 标签切换 ==========
   const toggleTag = useCallback((tag: string) => {
