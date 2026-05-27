@@ -1,7 +1,7 @@
 # Lumen Gallery 项目总结
 
 > 创建时间：2026-04-28
-> 最后更新：2026-05-25
+> 最后更新：2026-05-27
 > 基于 docs 目录文档分析
 
 ---
@@ -29,10 +29,14 @@
   - 键盘/手势交互（滚轮/双击/双指缩放、拖拽平移）
 
 ### P1 — 重要功能
-- 标签系统（基于目录结构自动生成）
+- ✅ **标签系统**（已完成 2026-05-27）
+  - 独立标签浏览页面（`/tags/`）
+  - 搜索栏：匹配标签名、文件名、相机、镜头等 EXIF 元数据
+  - 多选标签筛选（OR 逻辑），搜索与标签取交集（AND）
+  - 复用 `MasonicGallery` + `PhotoViewer`
+  - `useDeferredValue` 优化搜索性能
 - 图片分享（Web Share API + OG meta）
 - 暗色模式
-- 多尺寸缩略图支持（300w/800w/1600w）
 
 ### P2 — 增强功能
 - 地图视图（基于 EXIF GPS）
@@ -70,6 +74,7 @@ R2 Bucket/
   - `GalleryWithViewer.tsx` — 状态容器 + URL 同步
   - `MasonicGallery.tsx` — 瀑布流画廊（onClick 回调模式）
   - `PhotoViewer.tsx` — 图片查看器（胶片条 + 缩放 + 键盘导航）
+  - `TagBrowser.tsx` — 标签浏览（搜索 + 多选筛选 + 画廊）
 
 ---
 

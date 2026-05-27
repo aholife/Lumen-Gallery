@@ -1,7 +1,7 @@
 # 当前开发上下文
 
-> 最后更新：2026-05-25
-> 当前焦点模块：第三阶段 P1 功能开发（标签系统 / 分享 / 暗色模式）
+> 最后更新：2026-05-27
+> 当前焦点模块：第三阶段 P1 功能开发（分享 / 暗色模式）
 
 ## 🎯 目标
 
@@ -50,9 +50,18 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
   - 共享 Photo 类型（`src/types/photo.ts`）
   - 删除冗余 `BlurHashImage.astro`
 
+### 标签系统
+- [x] **标签浏览页面** — `/tags/`，Astro SSG 读取 photos.json 提取唯一标签
+- [x] **TagBrowser 组件** — 搜索栏 + 多选标签筛选 + MasonicGallery + PhotoViewer
+  - 搜索匹配：标签名、文件名、相机制造商/型号、镜头型号
+  - 筛选逻辑：标签 OR，搜索 AND 标签
+  - `useDeferredValue` 优化搜索输入响应
+  - 筛选变化时自动修正 viewer 索引
+- [x] **侧边栏入口** — Author.astro 添加"浏览标签"链接
+
 ## ⏳ 待办（Next）
 
-- [ ] 标签系统（基于目录路径自动生成 `/tags/xxx`）
+- [ ] 图片分享功能（Web Share API + OG meta）
 - [ ] 图片分享功能（Web Share API + OG meta）
 - [ ] 地图视图（EXIF GPS 数据）
 - [ ] 暗色模式
@@ -69,6 +78,7 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 | WebGL 渲染 | 暂不使用 | 增加 200KB+ JS，收益不明显 |
 | 全屏查看转场 | Overlay + URL 同步 | 不跳页，体验更好；直链 fallback 保留 SEO |
 | 状态管理 | useState + history API | 当前复杂度可控，暂不引入 Zustand |
+| 标签页面 | 独立 /tags/ 页面 | 不改变首页布局，标签+搜索功能独立 |
 
 ## 📌 注意事项
 
@@ -104,7 +114,9 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 | `src/components/GalleryWithViewer.tsx` | Viewer Overlay 状态容器 + URL 同步 |
 | `src/components/MasonicGallery.tsx` | 瀑布流画廊组件（onClick 回调模式） |
 | `src/components/PhotoViewer.tsx` | 图片查看器（胶片条 + 缩放 + 键盘导航） |
+| `src/components/TagBrowser.tsx` | 标签浏览（搜索 + 多选筛选 + 画廊） |
 | `src/pages/index.astro` | 首页（使用 GalleryWithViewer） |
+| `src/pages/tags/index.astro` | 标签浏览页面 |
 | `src/pages/Gallery/[...slug].astro` | 画廊 fallback 页面（直链/SEO 兜底） |
 | `public/photos.json` | 构建产物 — 图片元数据清单 |
 | `docs/AFILMORY_LEARNINGS.md` | Afilmory 参考手册（防坑指南） |

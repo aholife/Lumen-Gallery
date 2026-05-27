@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-05-27：标签系统实现方案
+
+### 背景
+标签数据已在构建时由 `extractTagsFromPath()` 从目录结构提取，存入 `photos.json`。需要实现前端浏览和筛选体验。
+
+### 考虑选项
+- **A. 顶部标签栏 + 画廊筛选** — 标签栏固定在首页上方，点击筛选下方内容
+- **B. 独立标签页面** — `/tags/` 独立页面，顶部标签 + 搜索 + 画廊
+
+### 决定
+选择 **B. 独立标签页面**。
+
+### 理由
+- 用户偏好独立页面，不希望首页布局被改变
+- 标签筛选 + 搜索功能组合更适合独立页面
+- 首页保持简洁的画廊体验
+
+### 关键实现
+- `TagBrowser.tsx`：React Island 组件，搜索栏 + 多选标签 + MasonicGallery + PhotoViewer
+- `src/pages/tags/index.astro`：Astro SSG 页面，读取 photos.json 提取标签
+- 搜索匹配：标签名、文件名、相机制造商/型号、镜头型号
+- 筛选逻辑：标签 OR，搜索 AND 标签
+- `useDeferredValue` 优化搜索输入响应
+- 筛选变化时自动修正 viewer 索引
+- 侧边栏 Author.astro 添加入口链接
+
+### 后果
+- ✅ 首页布局不变，标签功能独立
+- ✅ 复用现有 MasonicGallery + PhotoViewer 组件
+- ✅ 搜索功能扩展了标签系统的发现能力
+- ⚠️ 无 URL 同步（纯前端状态）
+
+---
+
 ## 2026-05-25：Viewer Overlay 实现方案
 
 ### 背景

@@ -66,18 +66,18 @@
 
 ### P1 — 重要
 
-- [ ] 标签系统（基于目录路径自动生成 `/tags/xxx`）
-  - 💡 根目录下无子目录的图片使用 `uncategorized` 作为默认 tag（见 AFILMORY_LEARNINGS §8）
-  - 💡 切换 tag 时给 masonic 组件加 `key={activeTag}`，强制重新计算布局
-  - 💡 分组 header 显示日期范围，如"2024年3月 · 12张"
+- [x] 标签系统（基于目录路径自动生成 + 搜索筛选）
+  - `TagBrowser.tsx`：搜索栏 + 多选标签 + MasonicGallery + PhotoViewer
+  - `/tags/` 页面：Astro SSG 读取 photos.json 提取标签
+  - 侧边栏入口：Author.astro 添加"浏览标签"链接
+  - `useDeferredValue` 优化搜索性能
+  - 筛选变化时自动修正 viewer 索引
 
 - [ ] 图片分享功能（Web Share API + OG meta）
   - 💡 OG `og:image` 必须是绝对 URL（含 `https://`），R2 CDN URL 可直接使用（见 AFILMORY_LEARNINGS §9）
   - 💡 OG meta 在 `[...slug].astro` 的 `<head>` 中设置（已有 SSG fallback 页面）
 
 - [ ] 暗色模式
-
-- [ ] 多尺寸缩略图支持（300w/800w/1600w）
 
 ### P2 — 锦上添花
 
