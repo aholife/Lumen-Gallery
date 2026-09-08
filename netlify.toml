@@ -13,9 +13,3 @@
   # 图片访问域名（R2 绑定的自定义域名）
   R2_PUBLIC_URL = "https://photos.echorains.top"
 
-# 处理 SPA 路由（如果需要）
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  conditions = {Role = ["admin"]}
