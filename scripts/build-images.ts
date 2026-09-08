@@ -24,7 +24,14 @@ async function main() {
       quality: 85,
     });
 
-    // 3. 保存元数据
+    // 3. 按拍摄时间降序排列（最新的在前）
+    metadata.sort((a, b) => {
+      const dateA = a.exif?.dateTime ? new Date(a.exif.dateTime).getTime() : 0;
+      const dateB = b.exif?.dateTime ? new Date(b.exif.dateTime).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // 4. 保存元数据
     const metadataPath = join(process.cwd(), 'public', 'photos.json');
     await saveMetadata(metadata, metadataPath);
 
