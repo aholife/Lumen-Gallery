@@ -4,9 +4,10 @@ import GalleryWithViewer from "../components/GalleryWithViewer"
 import "../styles/global.css"
 import { readFile } from "fs/promises"
 import { join } from "path"
+import { SITE_TITLE, SITE_DESCRIPTION } from "../consts"
 
-export const title = "照片画廊"
-export const description = "欢迎来到我的照片画廊"
+export const title = SITE_TITLE
+export const description = SITE_DESCRIPTION
 export const pubDate = new Date()
 
 // 读取处理后的照片元数据
