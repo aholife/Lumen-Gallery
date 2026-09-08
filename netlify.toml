@@ -1,0 +1,19 @@
+[build]
+  # R2 模式：先处理图片（从 R2 下载、生成缩略图、上传），再构建站点
+  command = "pnpm build:r2"
+  publish = "dist"
+
+[build.environment]
+  # 使用 Node.js 20
+  NODE_VERSION = "20"
+  # 使用 pnpm
+  NPM_FLAGS = "--version"
+  # 存储模式
+  STORAGE_MODE = "r2"
+
+# 处理 SPA 路由（如果需要）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Role = ["admin"]}
