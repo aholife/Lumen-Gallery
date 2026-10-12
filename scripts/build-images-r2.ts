@@ -66,7 +66,14 @@ async function main() {
       existingMetadata,
     });
 
-    // 5. 保存元数据到本地
+    // 5. 按拍摄时间降序排列（最新的在前）
+    metadata.sort((a, b) => {
+      const dateA = a.exif?.dateTime ? new Date(a.exif.dateTime).getTime() : 0;
+      const dateB = b.exif?.dateTime ? new Date(b.exif.dateTime).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // 6. 保存元数据到本地
     await saveMetadataR2(metadata, metadataPath);
 
     console.log('\n' + '━'.repeat(50));
