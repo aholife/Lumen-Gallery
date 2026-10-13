@@ -111,9 +111,20 @@
 - [ ] 构建并行化（图片量 > 200 张时，用 Promise 并发控制替代串行处理，见 AFILMORY_LEARNINGS §10）
 
 ### 部署
-- [ ] Netlify 部署配置（netlify.toml）
+- [x] Netlify 部署配置（netlify.toml）— 2026-09-08 上线，配置在 `netlify` 分支
+  - 构建命令 `pnpm install && pnpm build:r2`（必须先装依赖，`tsx` 是 devDependency）
+  - 双域名：站点 `gallery.echorains.top` / 图片 `photos.echorains.top`
+  - 不要加 SPA/角色条件 `[[redirects]]`（会导致全站 404）
+  - R2 密钥在 Netlify UI 用 key/value pairs 配置
+- [ ] 决定是否提交 `pnpm-lock.yaml`（目前被 gitignore，Netlify 安装不可复现）
+- [ ] 清理 `netlify.toml` 中意图不明的 `NPM_FLAGS = "--version"`
 - [ ] CDN 缓存策略（图片/字体永久缓存，API 短期缓存）
 - [ ] Lighthouse 性能调优（目标 >90 分）
+
+### 构建产物收尾（2026-09-08 排序改动后续）
+- [ ] 重跑 `process-images` / `process-images:r2`，生成按拍摄时间降序的 `photos.json`（排序代码已就位，产物尚未重生成）
+- [ ] `src/lib/image/exif.ts` 补读 `OffsetTimeOriginal`，修正展示时区（见 AFILMORY_LEARNINGS §6）
+  - 排序本身不受影响（偏移一致），但展示时间可能系统性偏移
 
 ### RSS & Sitemap
 - [ ] RSS Feed 生成（item pubDate 用拍摄时间，非构建时间）
@@ -125,6 +136,17 @@
 - [ ] 统一日志格式
 - [ ] 构建脚本错误处理完善
 - [ ] API 文档
+
+## 技术债（2026-05-27 标签系统评审遗留）
+
+- [ ] 抽取 photos.json 读取/解析公共工具（`index.astro` 与 `tags/index.astro` 重复实现）
+- [ ] `JSON.parse` 失败的错误提示与「Photos not processed yet」区分（当前会误导）
+- [ ] 移除 `.astro` 页面中的死导出 `export const title/description/pubDate`
+- [ ] 搜索框 a11y：`aria-label` / `type="search"` / 清除按钮
+- [ ] `closeViewer` 的 `setTimeout(100)` 增加卸载保护（可能在 unmount 后触发）
+- [ ] 骨架屏 CSS grid 与真画廊 masonry 不一致，hydrate 时 CLS
+
+> 验证门槛：本仓库 `tsc`/`astro check` 不可用（TypeScript 非直接依赖；`astro check` 非交互 shell 会卡住），一律用 `pnpm build` 验收。
 
 ---
 

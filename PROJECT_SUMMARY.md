@@ -1,8 +1,8 @@
 # Lumen Gallery 项目总结
 
 > 创建时间：2026-04-28
-> 最后更新：2026-05-27
-> 基于 docs 目录文档分析
+> 最后更新：2026-10-12
+> 基于 docs 目录文档与 .specstory 会话历史整理
 
 ---
 
@@ -27,6 +27,8 @@
   - URL 同步（`history.pushState` + `popstate`，可分享直链）
   - 胶片条虚拟化渲染（`@tanstack/virtual`）
   - 键盘/手势交互（滚轮/双击/双指缩放、拖拽平移）
+- ✅ **照片排序**（已完成 2026-09-08）— 构建时按拍摄时间降序写入 `photos.json`
+- ✅ **Netlify 部署**（已完成 2026-09-08）— `netlify` 分支 + R2 模式 + 双域名
 
 ### P1 — 重要功能
 - ✅ **标签系统**（已完成 2026-05-27）
@@ -37,6 +39,7 @@
   - `useDeferredValue` 优化搜索性能
 - 图片分享（Web Share API + OG meta）
 - 暗色模式
+- ~~多尺寸缩略图（300w/800w/1600w）~~ — **已取消**（2026-05-27 用户决定），长期维持单张 800w WebP
 
 ### P2 — 增强功能
 - 地图视图（基于 EXIF GPS）
@@ -65,8 +68,11 @@ R2 Bucket/
 4. 提取 EXIF 元数据（相机、GPS、拍摄参数）
 5. 生成 ThumbHash 占位符
 6. 基于目录结构生成标签
-7. 输出 `photos.json` 元数据清单
-8. 上传缩略图到 R2
+7. **按 `exif.dateTime` 降序排序**（最新在前；无 EXIF 日期的排最后）
+8. 输出 `photos.json` 元数据清单
+9. 上传缩略图到 R2
+
+> `photos.json` 的数组顺序即前端展示顺序（画廊、查看器胶片条、上下张导航共用），前端不做排序。
 
 ### 前端架构
 - **Astro SSG**: 静态页面生成，SEO 友好
@@ -75,6 +81,22 @@ R2 Bucket/
   - `MasonicGallery.tsx` — 瀑布流画廊（onClick 回调模式）
   - `PhotoViewer.tsx` — 图片查看器（胶片条 + 缩放 + 键盘导航）
   - `TagBrowser.tsx` — 标签浏览（搜索 + 多选筛选 + 画廊）
+
+### 部署架构（2026-09-08 上线）
+```
+netlify 分支（部署配置）
+├── netlify.toml        # command = "pnpm install && pnpm build:r2"
+└── astro.config.mjs    # site = https://gallery.echorains.top
+
+dev / master 分支（业务代码，不含部署配置）
+
+Netlify 构建时：安装依赖 → R2 下载原图 → 生成缩略图并回传 R2
+             → 写出 photos.json（按拍摄时间降序）→ astro build → dist/
+
+双域名：
+├── gallery.echorains.top  # 站点（SEO/OG 绝对 URL）
+└── photos.echorains.top   # 图片 CDN（R2_PUBLIC_URL）
+```
 
 ---
 
@@ -347,20 +369,22 @@ export async function uploadPhoto(formData: FormData) {
 | **存储** | Cloudflare R2（保持不变） | 零出口流量费，S3 兼容 |
 | **占位符** | ThumbHash（保持不变） | 体积小、质量高 |
 | **缩略图格式** | WebP（保持不变） | 高效压缩 |
+| **缩略图尺寸** | 单张 800w（多尺寸已取消 2026-05-27） | 简化构建与存储 |
+| **标签页面** | 独立 `/tags/` 页面 | 不改首页布局，标签 + 搜索独立 |
+| **照片排序** | 构建时按 `exif.dateTime` 降序 | 前端零改动，全链路顺序一致 |
+| **部署** | Netlify + 独立 `netlify` 分支 | 配置隔离；R2 模式在构建时生成元数据 |
 
 ---
 
 ## ✅ 总结
 
-**当前状态**: Astro 架构在 Viewer Overlay 改造中遇到瓶颈，SSR/CSR hydration 和状态管理复杂度高。
+**当前状态**: Astro + React Islands 架构已跑通完整链路 —— Viewer Overlay、标签系统均在此架构下完成，站点已部署 Netlify 上线（gallery.echorains.top）。
 
-**推荐方案**: 迁移到 **Next.js 14 App Router**，理由：
-1. 原生 React 支持，简化状态管理
-2. 内置图片优化，减少手动处理
-3. API Routes 支持实时上传和处理
-4. 更好的性能和开发体验
-5. 成熟的生态和社区支持
+**框架结论**: **继续使用 Astro + React Islands**，暂不迁移 Next.js。Viewer Overlay 改造验证了 `client:only="react"` + `history.pushState` 足以支撑复杂交互，迁移成本高于收益。
 
-**迁移成本**: 约 1-2 周（基础迁移 + 核心功能），可渐进式迁移。
+**重新评估迁移的触发条件**:
+- 需要用户上传功能（API Routes 更方便）
+- 需要 React Server Components 优化首屏性能
+- 团队规模扩大，需要统一的全栈框架
 
-**风险**: 学习曲线（如果团队不熟悉 Next.js），但长期收益大于成本。
+**下一步**: P1 功能（图片分享、暗色模式）+ 部署收尾（重新生成排序后的 `photos.json`、`OffsetTimeOriginal` 时区修正、`pnpm-lock.yaml` 决策）。详见 `docs/TODO.md`。

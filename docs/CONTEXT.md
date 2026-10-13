@@ -1,11 +1,13 @@
 # 当前开发上下文
 
-> 最后更新：2026-05-27
-> 当前焦点模块：第三阶段 P1 功能开发（分享 / 暗色模式）
+> 最后更新：2026-10-12
+> 当前焦点模块：P1 功能开发（图片分享 / 暗色模式）+ 部署后收尾
 
 ## 🎯 目标
 
-Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签系统、图片分享、暗色模式、多尺寸缩略图）。
+Viewer Overlay 与标签系统已完成，站点已部署到 Netlify（gallery.echorains.top）。下一步：P1 功能（图片分享、暗色模式）。
+
+多尺寸缩略图（300w/800w/1600w）已于 2026-05-27 由用户明确**取消**，不再进入路线图；当前维持单张 800w WebP。
 
 ## 📌 项目概况
 
@@ -13,7 +15,8 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 - **核心技术**: Astro + TypeScript + Tailwind CSS + React（复杂交互组件）
 - **存储方案**: Cloudflare R2（主要）/ Local / GitHub（可切换）
 - **图片处理**: Sharp（格式转换/缩略图）+ exifr（EXIF）+ thumbhash（占位符）
-- **当前阶段**: Viewer Overlay 已完成，进入 P1 功能开发
+- **部署**: Netlify（`netlify` 分支持有部署配置），站点 `gallery.echorains.top`，图片 CDN `photos.echorains.top`
+- **当前阶段**: MVP 已上线，进入 P1 功能开发
 
 ## ✅ 已完成
 
@@ -31,6 +34,7 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 - [x] 构建产物生成（`public/photos.json`）
 - [x] R2 全托管模式 — 缩略图上传到 R2，本地仅保存 photos.json
 - [x] R2 增量构建 — 基于 ETag 检测原图变更，跳过未变更图片，同名替换会触发重新处理
+- [x] **照片排序** — 构建时按 `exif.dateTime` 降序写入 `photos.json`（最新在前；无 EXIF 日期的排最后）
 
 ### 前端页面
 - [x] 基础布局组件（Header, Footer）
@@ -59,13 +63,34 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
   - 筛选变化时自动修正 viewer 索引
 - [x] **侧边栏入口** — Author.astro 添加"浏览标签"链接
 
+### 部署
+- [x] **Netlify 上线**（2026-09-08）— `netlify` 分支持有 `netlify.toml` / `site` URL；`dev` 不保留部署配置
+- [x] 双域名配置 — 站点 `gallery.echorains.top`（`astro.config.mjs` `site`）/ 图片 `photos.echorains.top`（`R2_PUBLIC_URL`）
+- [x] 构建命令 `pnpm install && pnpm build:r2`（先装依赖再跑图片流水线，`tsx` 是 devDependency）
+- [x] 站点标识 — `src/consts.ts`（落花流水集·影 / 偶尔拍拍 / Aholife），`index.astro` 改用 `SITE_TITLE`/`SITE_DESCRIPTION` 常量
+
 ## ⏳ 待办（Next）
 
+### 部署收尾
+- [ ] 重跑构建脚本，生成按拍摄时间排序后的 `photos.json`（排序代码已就位，产物尚未重生成）
+- [ ] 决定是否将 `pnpm-lock.yaml` 从 `.gitignore` 移出并提交（Netlify 安装可复现性；用户中断过一次修复）
+- [ ] 清理 `netlify.toml` 中意图不明的 `NPM_FLAGS = "--version"`
+- [ ] `src/lib/image/exif.ts` 补读 `OffsetTimeOriginal`，修正展示时区（详见 AFILMORY_LEARNINGS §6）
+
+### P1 功能
 - [ ] 图片分享功能（Web Share API + OG meta）
-- [ ] 图片分享功能（Web Share API + OG meta）
-- [ ] 地图视图（EXIF GPS 数据）
 - [ ] 暗色模式
-- [ ] 性能优化（虚拟���动、构建缓存）
+
+### P2 功能
+- [ ] 地图视图（EXIF GPS 数据）
+- [ ] 性能优化（构建缓存、R2 持久化缓存）
+
+### 技术债（标签系统评审遗留）
+- [ ] 抽取 photos.json 读取/解析公共工具（`index.astro` 与 `tags/index.astro` 重复）
+- [ ] `JSON.parse` 失败的错误提示与「Photos not processed yet」区分
+- [ ] 移除 `.astro` 页面中的死导出 `title/description/pubDate`
+- [ ] 搜索框 a11y（`aria-label` / `type="search"` / 清除按钮）
+- [ ] `closeViewer` 的 `setTimeout(100)` 增加卸载保护
 
 ## 🔑 关键决策
 
@@ -79,6 +104,9 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 | 全屏查看转场 | Overlay + URL 同步 | 不跳页，体验更好；直链 fallback 保留 SEO |
 | 状态管理 | useState + history API | 当前复杂度可控，暂不引入 Zustand |
 | 标签页面 | 独立 /tags/ 页面 | 不改变首页布局，标签+搜索功能独立 |
+| 照片排序 | 构建时按 `exif.dateTime` 降序写入 `photos.json` | 前端零改动，画廊/查看器/胶片条顺序自动一致 |
+| 多尺寸缩略图 | 取消（2026-05-27） | 维持单张 800w，简化构建与存储 |
+| 部署分支 | 部署配置只进 `netlify` 分支 | 用户要求 `dev` 不保留部署配置；耦合文件需双分支同步 |
 
 ## 📌 注意事项
 
@@ -87,6 +115,17 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 - R2 兼容性需配置 `requestChecksumCalculation` 和 `responseChecksumValidation`
 - R2 中 `size=0` 的对象为目录标记，需在文件列表阶段过滤
 - R2 构建默认忽略 `.thumbnails` 目录，可通过 `R2_IGNORE_DIRS` 环境变量追加其他忽略目录
+- **`tsc`/`astro check` 在本仓库不可用**（TypeScript 非直接依赖；`astro check` 在非交互 shell 会卡在安装确认）——**验证一律用 `pnpm build`**
+- **照片顺序**：`photos.json` 数组顺序即展示顺序。排序在两个构建脚本保存前按 `exif.dateTime` 降序完成；无 EXIF 日期的照片排最后。改排序逻辑后需重跑构建脚本才会反映到产物
+
+### 部署（Netlify）
+- 构建命令必须是 `pnpm install && pnpm build:r2` —— `tsx` 是 devDependency，不先装依赖会报 `tsx: not found`
+- **不要**给静态 Astro 站点加 SPA 风格 `[[redirects]]`；带 `conditions = { Role = [...] }` 的重定向会让普通访客全站 404
+- 双域名不可混：`site` = `gallery.echorains.top`（SEO/OG 绝对 URL），`R2_PUBLIC_URL` = `photos.echorains.top`（图片/缩略图 URL）
+- 构建产物被 gitignore（`public/photos.json` / `public/photos/` / `public/processed/`），Netlify 必须在构建时跑图片流水线
+- R2 密钥在 Netlify UI 用 "Add key/value pairs" 配置，不要 import `.env`
+- `pnpm-lock.yaml` 目前被 gitignore，Netlify 安装不可复现（待决）
+- 部署配置（`netlify.toml`、`site` URL）只存在于 `netlify` 分支；`consts.ts`/`index.astro` 这类耦合改动需双分支落地
 
 ### 图片处理
 - `sharp.rotate()` 自动根据 EXIF Orientation 旋转，`getImageDimensions()` 需考虑旋转后尺寸
@@ -118,5 +157,8 @@ Viewer Overlay 改造已完成，MVP 可部署。下一步：P1 功能（标签�
 | `src/pages/index.astro` | 首页（使用 GalleryWithViewer） |
 | `src/pages/tags/index.astro` | 标签浏览页面 |
 | `src/pages/Gallery/[...slug].astro` | 画廊 fallback 页面（直链/SEO 兜底） |
-| `public/photos.json` | 构建产物 — 图片元数据清单 |
+| `public/photos.json` | 构建产物 — 图片元数据清单（数组顺序 = 展示顺序） |
+| `netlify.toml` | Netlify 部署配置（**仅 `netlify` 分支**） |
+| `src/consts.ts` | 站点标题/描述/作者信息 |
+| `CLAUDE.md` | Claude Code 项目指南（**仅 `netlify` 分支**） |
 | `docs/AFILMORY_LEARNINGS.md` | Afilmory 参考手册（防坑指南） |

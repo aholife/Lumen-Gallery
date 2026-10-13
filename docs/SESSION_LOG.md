@@ -5,6 +5,96 @@
 
 ---
 
+## 2026-09-08 — photos.json 按拍摄时间降序排序
+
+**目标**：查明 `photos.json` 与页面展示顺序的来源，并改为按 EXIF 拍摄时间降序排列（最新在前）。
+
+**排查结论**：
+- 此前整条链路**没有任何显式排序**，数组顺序等于 `storage.listFiles()` 的返回顺序：
+  - Local：`readdir()` 文件系统顺序（平台相关，近似任意）
+  - R2：`ListObjectsV2` 按 key 字典序
+  - GitHub：Contents API 按目录内字母序、深度优先
+- 前端（`GalleryWithViewer` / `MasonicGallery` / `PhotoViewer` 胶片条 / `[...slug].astro` 上下张）完全按 `photos.json` 数组顺序渲染，无 `sort`/`reverse`。
+
+**主要变更**：
+1. `scripts/build-images.ts`、`scripts/build-images-r2.ts` — 在 `saveMetadata*()` 之前对 `metadata` 按 `exif.dateTime` 降序排序
+   ```ts
+   metadata.sort((a, b) => {
+     const dateA = a.exif?.dateTime ? new Date(a.exif.dateTime).getTime() : 0;
+     const dateB = b.exif?.dateTime ? new Date(b.exif.dateTime).getTime() : 0;
+     return dateB - dateA;
+   });
+   ```
+2. 无 EXIF 日期的照片（`getTime()` 为 0）排到列表末尾
+3. 排序放在构建时而非前端，保证 `photos.json` 即真相源；画廊、查看器导航、胶片条顺序自动一致
+4. R2 增量构建跳过的条目原本会停留在旧位置，统一末尾排序后增量/全量构建输出顺序一致
+
+**遗留**：
+- `public/photos.json` **未重新生成**（会话结束时仍是 key 序），需重跑构建脚本才会生效
+- `src/lib/image/exif.ts` **未读取 `OffsetTimeOriginal`**，与 `AFILMORY_LEARNINGS.md` §6 / CONTEXT.md 的要求不符 —— 排序不受影响（偏移一致），但展示时间可能有系统性时区偏移
+
+---
+
+## 2026-09-08 — Netlify 部署配置与上线
+
+**目标**：先 `/init` 生成 CLAUDE.md，再把站点部署到 Netlify 并排查代码问题。
+
+**主要变更**：
+
+1. **新建 `netlify.toml`（仅 `netlify` 分支）**
+   - `command = "pnpm install && pnpm build:r2"`，`publish = "dist"`，`NODE_VERSION = 20`
+   - `STORAGE_MODE = "r2"`，`R2_PUBLIC_URL = "https://photos.echorains.top"`
+   - 无 redirects（见下方踩坑）
+
+2. **分支拆分约定**：部署配置只进 `netlify` 分支（用户明确「dev分支不保留」）；`dev` 只留代码/内容改动。耦合文件（`consts.ts` + `index.astro`）需双分支落地，用 `git checkout <branch> -- <path>` 同步。
+
+3. **双域名**
+   - 站点：`https://gallery.echorains.top` → `astro.config.mjs` 的 `site`（影响 SEO/OG 绝对 URL）
+   - 图片 CDN：`https://photos.echorains.top` → `R2_PUBLIC_URL`
+   - 初版把两者配成同一个域名，用户指出后修正
+
+4. **站点标识**：`src/consts.ts` 更新为「落花流水集·影 / 偶尔拍拍 / Aholife」；`src/pages/index.astro` 改用 `SITE_TITLE`/`SITE_DESCRIPTION` 常量（双分支同步）
+
+5. **Netlify 控制台**：Base/Functions 目录留空；密钥（`R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NAME`）在 UI 里用 "Add key/value pairs" 添加，不要 import `.env`
+
+**部署踩坑**：
+- 构建报 `tsx: not found` —— `tsx` 是 devDependency，必须先 `pnpm install` 再跑 `build:r2`
+- 站点全站 404 —— 初版 `[[redirects]]` 带 `conditions = { Role = ["admin"] }`，普通访客全部匹配失败；静态 Astro 站点不需要 SPA redirect，整块删除后恢复
+- `pnpm-lock.yaml` 在 `.gitignore` 中 —— Netlify 安装不可复现的风险，用户中断了修复，**待决**
+- `netlify.toml` 中 `NPM_FLAGS = "--version"` 意图不明，未清理
+
+---
+
+## 2026-05-27 — 标签系统实现
+
+**目标**：阅读 docs 决定下一步开发内容；用户选定标签系统，并明确「多尺寸缩略图这个功能不要了」。
+
+**需求锁定**：独立 `/tags/` 页面（用户中途否掉「首页顶部标签栏」方案）；多选标签 OR；搜索与标签 AND；不做 URL 同步、不做标签计数；入口放侧边栏（站点无顶部导航，布局为 `GalleryPost.astro` 左 260px 信息栏 + 右瀑布流）。
+
+**主要变更**：
+1. **新建 `src/components/TagBrowser.tsx`** — 搜索（标签/文件名/相机 make/model/镜头 lensModel，`includes` 不区分大小写）+ 多选标签 + 复用 `MasonicGallery`/`PhotoViewer`；`useDeferredValue` 保持输入流畅；「清除筛选」+ 结果计数
+2. **新建 `src/pages/tags/index.astro`** — 读 `photos.json`，`Set` 去重 + 排序提取标签，`client:only="react"` 挂载
+3. **修改 `src/components/Author.astro`** — 侧边栏「标签 / 浏览标签」入口；链接类名修正为 `meta-value link`（`value link` 与兄弟节点字重字号不一致）
+4. **`TagBrowser.tsx`** — 筛选变化时 clamp/重置 viewer 索引（终审发现：`currentIndex` 会越界或指向错误照片）
+
+**验证**：无测试脚本，以 `pnpm build` 为验收门槛（128 pages, 119 photos, 9 tags）。用户选择「保持现状」—— 工作留在 `dev`，未合入 `master`、未推送。
+
+**防坑（本次踩到）**：
+- **`tsc`/`astro check` 在本仓库不可用** —— TypeScript 非直接依赖，`npx tsc` / `pnpm exec tsc` 均失败；`astro check` 要求安装 `@astrojs/check typescript` 且在非交互 shell 卡在 Y/n 确认。**验证一律用 `pnpm build`**
+- Windows Git Bash：`2>$null` 会报 ambiguous redirect，用 `2>/dev/null`
+- `Author.astro` 中 `.value` 与 `.meta-value` 是两套样式，侧边栏 meta-group 必须用 `meta-value`
+- 一次误操作重复粘贴了 `.meta-label`/`.meta-value` CSS 块，靠重读文件发现并清理
+
+**评审遗留（技术债，未修）**：
+- `index.astro` 与 `tags/index.astro` 重复实现 photos.json 读取/解析，应抽公共工具
+- `JSON.parse` 失败会走「Photos not processed yet」误导性提示
+- `.astro` 页面中 `export const title/description/pubDate` 是死代码
+- 骨架屏是 CSS grid、真画廊是 masonry，hydrate 时有 CLS
+- `closeViewer` 的 `setTimeout(100)` 可能在卸载后触发
+- 搜索框缺 `aria-label` / `type="search"` / 清除按钮
+
+---
+
 ## 2026-05-25 — Viewer Overlay 改造完成
 
 **目标**：实现不刷新页面的图片查看体验，对标 Afilmory。

@@ -5,6 +5,72 @@
 
 ---
 
+## 2026-09-08：照片排序策略
+
+### 背景
+`photos.json` 与页面展示顺序此前**没有任何显式排序**：Local 为 `readdir()` 文件系统顺序，R2 为 key 字典序，GitHub 为 Contents API 目录内字母序。需要按拍摄时间降序（最新在前）展示。
+
+### 考虑选项
+- **A. 前端排序** — 在 `GalleryWithViewer` / `MasonicGallery` 渲染前对 `photos.json` 排序
+- **B. 构建时排序** — 在 `scripts/build-images.ts` 与 `build-images-r2.ts` 保存元数据前排序
+
+### 决定
+选择 **B. 构建时排序**。
+
+### 理由
+- `photos.json` 是唯一真相源，顺序固化在产物里，前端零改动
+- 画廊、PhotoViewer 胶片条、`[...slug].astro` 上下张导航均按数组下标工作，构建时排一次全部自动一致
+- R2 增量构建跳过的条目原本会停留在旧位置；统一末尾排序后增量/全量输出顺序一致
+
+### 关键实现
+```ts
+metadata.sort((a, b) => {
+  const dateA = a.exif?.dateTime ? new Date(a.exif.dateTime).getTime() : 0;
+  const dateB = b.exif?.dateTime ? new Date(b.exif.dateTime).getTime() : 0;
+  return dateB - dateA;
+});
+```
+- 排序键 `exif.dateTime`（`exif.ts` 取 `DateTimeOriginal || DateTime`）
+- 无 EXIF 日期的照片 `getTime()` 为 0，排到列表末尾
+- 前端完全无 `sort`/`reverse` 逻辑
+
+### 后果
+- ✅ 展示顺序稳定、可预测
+- ⚠️ 改排序逻辑后必须重跑构建脚本，`photos.json` 才会更新
+- ⚠️ `exif.ts` 未读 `OffsetTimeOriginal`，展示时间可能有系统性时区偏移（排序内部自洽，不受影响）
+
+---
+
+## 2026-09-08：Netlify 部署方案
+
+### 背景
+需要把站点部署到 Netlify。构建产物（`public/photos.json` 等）被 gitignore，Netlify 检出的仓库里没有现成元数据，必须在构建时跑图片流水线。
+
+### 考虑选项
+- **A. 部署配置进 `dev`** — 配置与代码同分支
+- **B. 独立 `netlify` 分支** — 部署配置隔离，`dev` 保持干净
+
+### 决定
+选择 **B. 独立 `netlify` 分支**（用户明确「dev分支不保留」）。存储模式选定 **R2**。
+
+### 理由
+- 部署配置（`netlify.toml`、`site` URL、CLAUDE.md）与业务代码解耦
+- R2 模式：图片留在 Cloudflare R2，Netlify 只构建前端；`build:r2` 在部署时下载原图、生成 800w WebP、上传缩略图回 R2、写出 `photos.json` 再 `astro build`
+
+### 关键实现
+- `netlify.toml`：`command = "pnpm install && pnpm build:r2"`，`publish = "dist"`，`NODE_VERSION = 20`
+- 双域名：站点 `gallery.echorains.top`（`astro.config.mjs` `site`，影响 SEO/OG 绝对 URL）；图片 CDN `photos.echorains.top`（`R2_PUBLIC_URL`）
+- R2 密钥在 Netlify UI 用 "Add key/value pairs" 配置，不 import `.env`
+- 耦合文件（`consts.ts`、`index.astro`）需双分支落地，用 `git checkout <branch> -- <path>` 同步
+
+### 后果
+- ✅ 站点上线，`dev` 无部署噪音
+- ⚠️ `pnpm install` 不能省略 —— `tsx` 是 devDependency，漏装会 `tsx: not found`
+- ⚠️ 静态 Astro 站点不要加 SPA/角色条件 `[[redirects]]`，会让普通访客全站 404
+- ⚠️ `pnpm-lock.yaml` 被 gitignore，Netlify 安装不可复现（待决）
+
+---
+
 ## 2026-05-27：标签系统实现方案
 
 ### 背景
@@ -170,6 +236,7 @@ R2 Bucket/
 
 ### 决定
 MVP 阶段选择 **B. 单张 800w**。
+**2026-05-27 更新：多尺寸缩略图（300w/800w/1600w）由用户明确取消，不再作为 P1 升级路径。**
 
 ### 理由
 - 简化构建流程和存储结构
@@ -181,6 +248,7 @@ MVP 阶段选择 **B. 单张 800w**。
 -  构建速度快，存储成本低
 - ⚠️ 大屏/Retina 可能略显模糊
 - ⚠️ 小屏加载略有浪费
+-  多尺寸方案已取消（2026-05-27），当前策略长期维持单张 800w
 
 ---
 
