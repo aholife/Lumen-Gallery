@@ -1,7 +1,7 @@
 # Lumen Gallery 项目总结
 
 > 创建时间：2026-04-28
-> 最后更新：2026-10-12
+> 最后更新：2026-10-13
 > 基于 docs 目录文档与 .specstory 会话历史整理
 
 ---
@@ -258,7 +258,32 @@ app/
 
 ## 🎯 框架决策
 
-### ✅ 结论：继续使用 Astro + React Islands
+### ✅ 结论（2026-10-13 更新）：完整重写为 Vite + React SPA，部署 Cloudflare Workers
+
+> **本节已更新。** 2026-05-25 曾决定「继续 Astro + React Islands，暂不迁移 Next.js」。
+> 2026-10-13 因体验差距（详情页渐进加载、标签筛选动画、手机双列、EXIF 布局）与部署目标变更（Netlify → Cloudflare Workers），
+> 决定**完整 React 重写**。完整设计见 [`docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md`](docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md)。
+
+**新架构：** Vite + React 19 + react-router v7 + Zustand + motion/GSAP Flip + **WebGL/WebGPU 渲染面** + Tailwind v4
+**部署：** Cloudflare Workers Static Assets（与 R2 同生态）
+**复用：** `src/lib/**`（存储 + 图片流水线）、`scripts/build-images*.ts`、`photos.json` 契约
+
+**推翻的旧决策：**
+- ~~继续 Astro + React Islands~~（2026-05-25）
+- ~~Netlify 部署~~（2026-09-08）
+- ~~暂不引入 Zustand~~
+- ~~不使用 WebGL 渲染器~~（2026-02-10 → 2026-10-13 启用，移植 Afilmory `webgl-viewer`）
+
+**仍然有效的旧决策：**
+- 单张 800w WebP 缩略图（多尺寸已于 2026-05-27 取消）— Afilmory 的渐进阶梯也不需要多尺寸
+- ThumbHash 占位符
+- 构建时按 `exif.dateTime` 降序
+- Cloudflare R2 主存储
+
+### ~~历史结论：继续使用 Astro + React Islands~~（已被 2026-10-13 取代）
+
+<details>
+<summary>展开查看历史分析</summary>
 
 Viewer Overlay 改造已成功在 Astro 架构下实现，验证了以下方案的可行性：
 - `client:only="react"` island 模式足以支撑复杂交互
@@ -266,11 +291,7 @@ Viewer Overlay 改造已成功在 Astro 架构下实现，验证了以下方案�
 - `[...slug].astro` SSG 页面保留直链/SEO 兜底
 - 状态复杂度可控，暂不需要 Zustand
 
-### 未来迁移 Next.js 的触发条件
-如果未来出现以下需求，可重新评估迁移：
-- 需要用户上传功能（API Routes 更方便）
-- 需要 React Server Components 优化首屏性能
-- 团队规模扩大，需要统一的全栈框架
+</details>
 
 ---
 
@@ -378,13 +399,9 @@ export async function uploadPhoto(formData: FormData) {
 
 ## ✅ 总结
 
-**当前状态**: Astro + React Islands 架构已跑通完整链路 —— Viewer Overlay、标签系统均在此架构下完成，站点已部署 Netlify 上线（gallery.echorains.top）。
+**当前状态（2026-10-13）**: Astro 架构已跑通完整链路并上线过 Netlify，但与 Afilmory 体验差距过大。已决定**完整 React 重写**，部署迁移 **Cloudflare Workers**。
 
-**框架结论**: **继续使用 Astro + React Islands**，暂不迁移 Next.js。Viewer Overlay 改造验证了 `client:only="react"` + `history.pushState` 足以支撑复杂交互，迁移成本高于收益。
+**框架结论**: **Vite + React 19 SPA + react-router v7**（对齐 Afilmory），状态用 Zustand，动画用 motion + GSAP Flip，查看器用 **WebGPU/WebGL 渲染面**（LOD 放大不糊）。构建流水线 / R2 存储 / `photos.json` 契约原样复用。
 
-**重新评估迁移的触发条件**:
-- 需要用户上传功能（API Routes 更方便）
-- 需要 React Server Components 优化首屏性能
-- 团队规模扩大，需要统一的全栈框架
-
-**下一步**: P1 功能（图片分享、暗色模式）+ 部署收尾（重新生成排序后的 `photos.json`、`OffsetTimeOriginal` 时区修正、`pnpm-lock.yaml` 决策）。详见 `docs/TODO.md`。
+**下一步**: 按 v2 设计文档分 7 个 Phase 实施（脚手架 → 画廊 → 渐进加载 → **WebGL 渲染面** → EXIF 面板 → 标签动画 → 收尾）。
+详见 `docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md` 与 `docs/TODO.md`。

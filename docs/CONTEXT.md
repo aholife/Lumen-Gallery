@@ -1,13 +1,19 @@
 # 当前开发上下文
 
-> 最后更新：2026-10-12
-> 当前焦点模块：P1 功能开发（图片分享 / 暗色模式）+ 部署后收尾
+> 最后更新：2026-10-13
+> 当前焦点模块：**Lumen Gallery v2 — React 重写 + Cloudflare Workers 部署**（设计已定稿，待实现）
 
 ## 🎯 目标
 
-Viewer Overlay 与标签系统已完成，站点已部署到 Netlify（gallery.echorains.top）。下一步：P1 功能（图片分享、暗色模式）。
+**2026-10-13 决定完整 React 重写**，取代 Astro + React islands。动机是四个体验痛点（详情页渐进加载、标签筛选瀑布流动画、手机双列切换、EXIF 面板布局）与 Afilmory 差距过大，在 Astro 上打补丁成本不低于重写。部署目标同步改为 **Cloudflare Workers**。
 
-多尺寸缩略图（300w/800w/1600w）已于 2026-05-27 由用户明确**取消**，不再进入路线图；当前维持单张 800w WebP。
+> **完整设计见 [`docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md`](./superpowers/specs/2026-10-13-react-rewrite-workers-design.md)**
+> 决策记录见 [DECISIONS.md](./DECISIONS.md)「2026-10-13」条目
+> 实施阶段见 [TODO.md](./TODO.md)「v2 重写」
+
+**新架构速览：** Vite + React 19 SPA + react-router v7 + Zustand + motion/GSAP Flip + **WebGL/WebGPU 渲染面** + Tailwind v4，部署 Cloudflare Workers Static Assets。构建流水线（`src/lib/**`、`scripts/build-images*.ts`、`photos.json` 契约）**原样复用**。
+
+多尺寸缩略图（300w/800w/1600w）已于 2026-05-27 由用户明确**取消**，v2 **继续维持**单张 800w WebP — Afilmory 的渐进阶梯（Thumbhash → 缩略图 → 原图）也不需要多尺寸。
 
 ## 📌 项目概况
 
@@ -71,7 +77,19 @@ Viewer Overlay 与标签系统已完成，站点已部署到 Netlify（gallery.e
 
 ## ⏳ 待办（Next）
 
-### 部署收尾
+### 🔥 v2 React 重写（2026-10-13 起，当前最高优先级）
+
+详见设计文档，分 6 个阶段：
+
+- [ ] **Phase 0** — Vite + React + react-router 脚手架，`wrangler.jsonc` Workers 部署打通
+- [ ] **Phase 1** — 数据层（内联 photos.json）+ 画廊网格 + 手机双列/单列切换
+- [ ] **Phase 2** — Viewer 渐进加载（Thumbhash → 缩略图 → 原图 blob + 进度条 + LRU）+ 共享元素转场
+- [ ] **Phase 3** — **WebGL / WebGPU 渲染面**（移植 Afilmory `webgl-viewer`，LOD 放大不糊 + 惯性平移）
+- [ ] **Phase 4** — EXIF 面板（PC 右侧默认展开 / 手机底部抽屉默认收起）
+- [ ] **Phase 5** — 标签筛选 + GSAP Flip 瀑布流重组动画
+- [ ] **Phase 6** — 收尾清理（移除 Astro/blog/netlify）+ 通测 + 文档更新
+
+### 部署收尾（旧，已并入 v2 或作废）
 - [ ] 重跑构建脚本，生成按拍摄时间排序后的 `photos.json`（排序代码已就位，产物尚未重生成）
 - [ ] 决定是否将 `pnpm-lock.yaml` 从 `.gitignore` 移出并提交（Netlify 安装可复现性；用户中断过一次修复）
 - [ ] 清理 `netlify.toml` 中意图不明的 `NPM_FLAGS = "--version"`
@@ -96,17 +114,19 @@ Viewer Overlay 与标签系统已完成，站点已部署到 Netlify（gallery.e
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
+| **前端框架（2026-10-13）** | **Vite + React 19 SPA 重写** | 对齐 Afilmory 体验；Astro islands 复刻成本过高 |
+| **路由（2026-10-13）** | react-router v7 | Afilmory 同款；`/photos/:id` 深链 |
+| **状态管理（2026-10-13）** | Zustand | viewer/gallery/URL 三态耦合（推翻「暂不引入 Zustand」） |
+| **动画（2026-10-13）** | motion + GSAP Flip | motion 管 viewer 转场；GSAP Flip 管标签筛选重组 |
+| **渲染面（2026-10-13）** | **WebGPU 优先 + WebGL 降级** | LOD 放大不糊 + 惯性平移；推翻 2026-02-10「不用 WebGL」 |
+| **部署（2026-10-13）** | Cloudflare Workers Static Assets | 与 R2 同生态；推翻 Netlify 方案 |
 | 主存储 | Cloudflare R2 | 零出口流量费，S3 兼容 API |
 | 占位符 | ThumbHash（非 BlurHash） | 体积更小、质量更高、支持透明度 |
 | 缩略图格式 | WebP | 更高效压缩，更好质量 |
-| 缩略图策略 | 单张 800w | 简化流程，满足当前需求 |
-| WebGL 渲染 | 暂不使用 | 增加 200KB+ JS，收益不明显 |
-| 全屏查看转场 | Overlay + URL 同步 | 不跳页，体验更好；直链 fallback 保留 SEO |
-| 状态管理 | useState + history API | 当前复杂度可控，暂不引入 Zustand |
-| 标签页面 | 独立 /tags/ 页面 | 不改变首页布局，标签+搜索功能独立 |
+| 缩略图策略 | 单张 800w（v2 继续维持） | Afilmory 也是单张缩略图 + Thumbhash + 原图三级阶梯 |
+| 全屏查看 | SPA 路由 `/photos/:id` + 共享元素转场 | 推翻 Astro Overlay + `[...slug].astro` 兜底 |
 | 照片排序 | 构建时按 `exif.dateTime` 降序写入 `photos.json` | 前端零改动，画廊/查看器/胶片条顺序自动一致 |
-| 多尺寸缩略图 | 取消（2026-05-27） | 维持单张 800w，简化构建与存储 |
-| 部署分支 | 部署配置只进 `netlify` 分支 | 用户要求 `dev` 不保留部署配置；耦合文件需双分支同步 |
+| 多尺寸缩略图 | 取消（2026-05-27，v2 不恢复） | 渐进加载靠 Thumbhash→800w→原图，无需 srcset |
 
 ## 📌 注意事项
 

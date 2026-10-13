@@ -5,6 +5,92 @@
 
 ---
 
+## 2026-10-13：启用 WebGL / WebGPU 图片渲染（推翻「暂不使用 WebGL」）
+
+> 完整设计见 [`docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md` §5.1b](./superpowers/specs/2026-10-13-react-rewrite-workers-design.md)
+
+### 背景
+早期（2026-02-10）决定第一版不用 WebGL，理由是「PixiJS/Three.js 增加 200KB+ JS，对图片展示体验提升不明显」。
+但用户反馈 Afilmory 的渲染手感明显更好。本项目原图为 8574×5716 / 约 20MB，CSS `transform: scale()` 放大会糊，
+而 Afilmory 的 `@afilmory/webgl-viewer` 通过 GPU 纹理 + 客户端 LOD 瓦片在 10–20x 仍保持锐利。
+
+### 考虑选项
+- **A. 继续 CSS `<img>` + transform** — 简单，放大糊
+- **B. 移植 Afilmory `webgl-viewer`（WebGPU 优先 + WebGL 降级 + LOD + HDR Gain Map）** — 约 4200 行
+- **C. 自研简化 WebGL 纹理渲染（无 LOD）** — 缩放仍糊，只解决抖动
+
+### 决定
+选择 **B. 移植 Afilmory `packages/webgl-viewer`**，路径 `src/web/modules/viewer/webgl-viewer/`。
+实施分步：先 WebGL-only 跑通，再加 WebGPU 引擎与 HDR gainmap。
+
+### 理由
+- LOD 是「放大不糊」的关键，自研简化版达不到同等体验
+- 客户端从原图 blob 生成瓦片，**无需服务端预切片**，`photos.json` 契约不变
+- WebGPU 不可用时自动切 WebGL，再退 `<img>`，兼容性链路完整
+- 与 `ProgressiveImage` 天然衔接：缩略图 `<img>` 先上屏，blob 就绪后挂 `ImageViewer`
+
+### 关键实现
+- 引擎：`ImageViewerEngineBase`（手势/物理）+ `WebGLImageViewerEngine` + LOD 瓦片 Worker
+- 渲染面：`<ImageViewer src={blobUrl} width height onLoad onError onZoomChange />`
+- 降级：WebGPU → WebGL → `<img>` CSS transform；降级时保留缩放平移位置
+- 纹理预算 128 MiB（大图 8574×5716 RGBA 约 190MB，必须走瓦片/降采样）
+- HDR：`jpeg-gainmap.ts` 支持 Adobe XMP / ISO 21496-1 增益图
+
+### 后果
+- ✅ 放大看细节不糊；平移有惯性手感；缩放 HUD 平滑
+- ✅ 有增益图的照片可出真 HDR
+- ⚠️ **推翻 2026-02-10「不使用 WebGL 渲染器」决策**
+- ⚠️ 移植量大（~4200 行），需真机验证 iOS Safari 纹理上限
+- ⚠️ JS 体积增加；但换来的是查看器核心体验
+
+---
+
+## 2026-10-13：完整 React 重写 + 部署迁移到 Cloudflare Workers
+
+> 完整设计见 [`docs/superpowers/specs/2026-10-13-react-rewrite-workers-design.md`](./superpowers/specs/2026-10-13-react-rewrite-workers-design.md)
+
+### 背景
+Astro + React islands 已跑通 Viewer Overlay / 标签系统并上线，但与 Afilmory 体验差距明显：
+1. 详情页直接加载 16–23MB 原图 + spinner，无 Thumbhash → 缩略图 → 原图 渐进感
+2. 标签筛选时 Masonry 被 `key={Date.now()}` 硬重挂，无瀑布流重组动画
+3. 手机端 `columnWidth=240` 只能排 1 列
+4. EXIF 面板手机/PC 布局都不对（两套重复 sidebar）
+
+同时部署目标改为 Cloudflare Workers（图片已在 R2，同生态、零出口流量费）。
+
+### 考虑选项
+- **A. Astro 上打补丁** — 保留框架，只改 4 个体验点
+- **B. Vite + React SPA 完整重写** — 与 Afilmory 同构，复用构建流水线
+- **C. Next.js App Router 重写** — 项目早期分析过的方案（见 PROJECT_SUMMARY.md）
+
+### 决定
+选择 **B. Vite + React SPA + react-router v7**，部署 **Cloudflare Workers Static Assets**。
+
+### 理由
+- Afilmory 的体验来自一整套客户端状态机（ProgressiveImage / FLIP / LRU blob cache），在 Astro islands 里复刻成本不低于重写
+- 交互全是客户端，不需要 RSC/SSR；SPA 更贴近参考实现
+- 构建流水线（`src/lib/**`、`scripts/build-images*.ts`）零 Astro 耦合，可原样复用
+- Next.js 的 API Routes / RSC / next/image 本项目用不到（YAGNI）
+- Workers 与 R2 同属 Cloudflare，`not_found_handling: "single-page-application"` 原生支持 SPA 深链
+
+### 关键实现
+- 状态：**Zustand**（AFILMORY_LEARNINGS 明确后悔没一开始就用）
+- 动画：**motion**（viewer 共享元素/淡入）+ **GSAP Flip**（标签筛选瀑布流重组）
+- 布局：**masonic** 沿用，单元格按 `width/aspectRatio` 预定尺寸（零 CLS）
+- 渐进加载：Thumbhash → 800w WebP → 原图（XHR blob + 进度），**无需多尺寸缩略图**
+
+### 后果
+- ✅ 体验可真正对齐 Afilmory；同一 Cloudflare 生态部署
+- ⚠️ **推翻 2026-05-25「继续 Astro + React Islands」决策**
+- ⚠️ **推翻 2026-09-08 Netlify 部署方案**（`netlify` 分支部署配置作废）
+- ⚠️ 博客 / RSS / Astro Content Collections 一并砍掉（原为脚手架占位内容）
+- ⚠️ SEO 转为 SPA 客户端渲染；OG meta 后续用 Worker HTMLRewriter 注入
+- ✅ **不推翻** 2026-05-27「取消多尺寸缩略图」— Afilmory 也是单张缩略图 + Thumbhash + 原图三级阶梯
+
+---
+
+## 2026-09-08：照片排序策略
+
 ## 2026-09-08：照片排序策略
 
 ### 背景
